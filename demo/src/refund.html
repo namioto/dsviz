@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>환불 처리 흐름</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="refund"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    Dsviz.createDiagram("#refund", {
+      caption: "고객은 상담원과만 이야기하고, 10만 원을 넘는 환불만 팀장 승인을 거친다",
+      draw(g) {
+        g.person("customer", { x: 70, y: 100, label: "고객" });
+        g.person("agent", { x: 290, y: 100, label: "상담원" });
+        g.chip("check", { x: 290, y: 46, text: "내용 확인", role: "muted" });
+        g.person("lead", { x: 290, y: 270, label: "팀장" });
+        g.box("refund", { x: 470, y: 158, w: 150, h: 56, label: "환불" });
+        g.arrow("req", { from: "customer", to: "agent", role: "focus", label: "환불 요청" });
+        g.arrow("low", { from: "agent", to: "refund", role: "focus", label: "10만 원 이하" });
+        g.arrow("high", { from: "agent", to: "lead", role: "compare", label: "10만 원 초과" });
+        g.arrow("approve", { from: "lead", to: "refund", role: "compare", label: "승인", labelSide: "below" });
+        g.line("nocontact", { points: [[100, 135], [258, 262]], role: "alert", dashed: true });
+        g.chip("nocontactTag", { x: 142, y: 222, text: "직접 연락 없음", role: "alert" });
+      },
+      mobile: {
+        width: 360,
+        draw(g) {
+          g.person("customer", { x: 80, y: 40, label: "고객" });
+          g.person("agent", { x: 80, y: 190, label: "상담원" });
+          g.chip("check", { x: 80, y: 250, text: "내용 확인", role: "muted" });
+          g.person("lead", { x: 280, y: 190, label: "팀장" });
+          g.box("refund", { x: 20, y: 340, w: 320, h: 52, label: "환불" });
+          g.arrow("req", { from: "customer", to: "agent", role: "focus", label: "환불 요청" });
+          g.arrow("low", { from: [80, 268], to: [80, 340], role: "focus", label: "10만 원 이하" });
+          g.arrow("high", { from: "agent", to: "lead", role: "compare", label: "10만 원 초과" });
+          g.arrow("approve", { from: "lead", to: [280, 340], role: "compare", label: "승인" });
+          g.line("nocontact", { points: [[110, 60], [255, 160]], role: "alert", dashed: true });
+          g.chip("nocontactTag", { x: 210, y: 70, text: "직접 연락 없음", role: "alert" });
+        },
+      },
+      sequence: [
+        { id: "customer", effect: "fade", from: 0, to: 0.1 },
+        { id: "req", effect: "grow", from: 0.04, to: 0.28 },
+        { id: "req", effect: "travel", from: 0.04, to: 0.28, token: "요청" },
+        { id: "agent", effect: "fade", from: 0.12, to: 0.24 },
+        { id: "check", effect: "fade", from: 0.26, to: 0.36 },
+        { id: "low", effect: "grow", from: 0.36, to: 0.56 },
+        { id: "refund", effect: "fade", from: 0.44, to: 0.54 },
+        { id: "high", effect: "grow", from: 0.54, to: 0.7 },
+        { id: "lead", effect: "fade", from: 0.6, to: 0.68 },
+        { id: "approve", effect: "grow", from: 0.68, to: 0.82 },
+        { id: "nocontact", effect: "grow", from: 0.8, to: 0.92 },
+        { id: "nocontactTag", effect: "fade", from: 0.84, to: 0.93 },
+        { id: "lead", effect: "pulse", from: 0.86, to: 0.95 },
+      ],
+    });
+  </script>
+</body>
+</html>

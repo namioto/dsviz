@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>폭격기 생존 편향</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="bomber"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    // hidden-data: 돌아온 폭격기(왼쪽)와 돌아오지 못한 폭격기(오른쪽)
+    // 부품 배치: 위에서 본 폭격기, 기수가 위쪽
+    function plane(g, p, cx, top, o) {
+      const L = cx - 130;
+      const part = (id, x, y, w, h, label, role) =>
+        g.box(p + id, { x: L + x, y: top + y, w, h, label, role, dashed: o.dashed, size: 12 });
+      part("body", 112, 50, 36, 190, "동체");
+      part("engL", 30, 66, 52, 36, "엔진", o.engineRole);
+      part("engR", 178, 66, 52, 36, "엔진", o.engineRole);
+      part("wingL", 0, 110, 104, 40, "날개", o.wingRole);
+      part("wingR", 156, 110, 104, 40, "날개", o.wingRole);
+      part("tailL", 50, 192, 54, 36, "꼬리", o.wingRole);
+      part("tailR", 156, 192, 54, 36, "꼬리", o.wingRole);
+      o.holes.forEach(([x, y], i) => g.dot(`${p}hole${i}`, { x: L + x, y: top + y, r: 4, role: o.holeRole }));
+    }
+
+    const wingTail = ["wingL", "wingR", "tailL", "tailR"];
+    const parts = ["body", "engL", "engR", ...wingTail];
+    // 총알 자국 좌표: [폭격기 왼쪽 끝 기준 x, 폭격기 위 끝 기준 y]
+    const holesAxy = [[10, 118], [94, 142], [22, 143], [166, 117], [250, 142], [238, 118], [57, 221], [203, 199]];
+    const holesBxy = [[38, 74], [74, 94], [186, 94], [222, 74]];
+    const holesA = holesAxy.map((_, i) => `a.hole${i}`);
+    const holesB = holesBxy.map((_, i) => `b.hole${i}`);
+
+    // 배치: A/B 폭격기 중심 x와 위 끝 y, 주석 칩 y
+    function scene(g, L) {
+      g.chip("titleA", { x: L.ax, y: L.ay + 20, text: "돌아온 폭격기" });
+      g.chip("titleB", { x: L.bx, y: L.by + 20, text: "돌아오지 못한 폭격기", role: "muted" });
+      plane(g, "a.", L.ax, L.ay, { wingRole: "compare", engineRole: "focus", holeRole: "compare", holes: holesAxy });
+      plane(g, "b.", L.bx, L.by, { dashed: true, engineRole: "focus", holeRole: "focus", holes: holesBxy });
+      g.chip("holeNote", { x: L.ax, y: L.ay + 266, text: "총알 자국: 날개와 꼬리", role: "compare" });
+      g.chip("opinion", { x: L.ax, y: L.ay + 298, text: "보강 의견: 날개와 꼬리", role: "compare" });
+      g.chip("answer", { x: L.ax, y: L.ay + 330, text: "보강할 곳: 엔진", role: "focus" });
+      g.chip("engHit", { x: L.bx, y: L.by + 266, text: "엔진 피격: 돌아오지 못함", role: "focus" });
+      g.text("absent", { x: L.bx, y: L.by + 298, text: "조사 대상에 없음", tone: "ink3", size: 13 });
+    }
+
+    Dsviz.createDemo("#bomber", {
+      steps: [
+        { at: 0, caption: "돌아온 폭격기의 총알 자국은 날개와 꼬리에 몰려 있었다" },
+        { at: 0.36, caption: "그래서 날개와 꼬리를 보강하자는 의견이 나왔다" },
+        { at: 0.64, caption: "엔진을 맞은 폭격기는 돌아오지 못했으니, 보강할 곳은 엔진이다" },
+      ],
+      draw(g) { scene(g, { ax: 160, ay: 0, bx: 480, by: 0 }); },
+      mobile: { width: 360, draw(g) { scene(g, { ax: 180, ay: 0, bx: 180, by: 370 }); } },
+      sequence: [
+        { ids: ["titleA", ...parts.map((s) => "a." + s)], effect: "fade", from: 0, to: 0.1 },
+        { ids: holesA, effect: "fade", from: 0.08, to: 0.14, stagger: 0.02 },
+        { id: "holeNote", effect: "fade", from: 0.24, to: 0.32 },
+        { ids: wingTail.map((s) => "a." + s), effect: "highlight", from: 0.38, to: 0.5 },
+        { id: "opinion", effect: "fade", from: 0.42, to: 0.52 },
+        { ids: ["titleB", ...parts.map((s) => "b." + s)], effect: "fade", from: 0.66, to: 0.74 },
+        { ids: holesB, effect: "fade", from: 0.72, to: 0.78, stagger: 0.02 },
+        { ids: ["engHit", "absent"], effect: "fade", from: 0.76, to: 0.84 },
+        { ids: ["a.engL", "a.engR"], effect: "highlight", from: 0.82, to: 0.9 },
+        { ids: ["a.engL", "a.engR"], effect: "pulse", from: 0.84, to: 0.94 },
+        { id: "answer", effect: "fade", from: 0.84, to: 0.92 },
+      ],
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>계산대와 대기 줄</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="counter"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    // capacity-queue: 같은 손님 흐름을 계산대 1곳/2곳 줄에 동시에 넣어 비교
+    // 12배속: 화면 5초 = 시뮬레이션 1분. 계산대 한 곳은 분당 25명 처리
+    const SPEED = 12;
+    const SERVICE_MS = 60000 / 25 / SPEED;
+    const START_QUEUE = 6;
+
+    function lane(counters) {
+      return { queue: START_QUEUE, busy: Array(counters).fill(0) };
+    }
+
+    function serve(l, dt) {
+      l.busy = l.busy.map((left) => {
+        if (left > 0) left -= dt;
+        if (left <= 0 && l.queue > 0) {
+          l.queue -= 1;
+          return SERVICE_MS + left;
+        }
+        return Math.max(0, left);
+      });
+    }
+
+    // 기준 폭(640/360)별 배치값
+    function layout(W) {
+      const wide = W >= 640;
+      return {
+        boxX: wide ? 420 : 240, boxW: wide ? 140 : 104,
+        headX: wide ? 370 : 196, gap: wide ? 14 : 12,
+        maxShown: wide ? 22 : 14,
+      };
+    }
+
+    function drawLane(g, L, key, title, l, top) {
+      const n = l.busy.length;
+      const qy = n === 1 ? top + 50 : top + 78;
+      g.text(`${key}-title`, { x: 20, y: top, text: `${title}  대기 ${l.queue}명`, align: "left", tone: "ink2", size: 12, weight: 600 });
+      const shown = Math.min(l.queue, L.maxShown);
+      const role = l.queue > 10 ? "alert" : "muted";
+      for (let i = 0; i < shown; i++) g.dot(`${key}-q${i}`, { x: L.headX - 10 - i * L.gap, y: qy, r: 5, role });
+      if (l.queue > L.maxShown) g.text(`${key}-more`, { x: 20, y: qy + 24, text: `+${l.queue - L.maxShown}명 더`, align: "left", tone: "ink3", size: 11 });
+      for (let k = 0; k < n; k++) {
+        const y = n === 1 ? top + 28 : top + 28 + k * 56;
+        g.box(`${key}-c${k}`, { x: L.boxX, y, w: L.boxW, h: 44, label: `계산대 ${k + 1}`, role: l.busy[k] > 0 ? "focus" : undefined });
+        const fx = L.headX + 16;
+        g.arrow(`${key}-a${k}`, { from: [L.headX, qy], via: n === 1 ? [] : [[fx, qy], [fx, y + 22]], to: `${key}-c${k}`, role: "muted" });
+      }
+    }
+
+    function drawAll(W) {
+      return (g, sim) => {
+        const L = layout(W);
+        drawLane(g, L, "one", "계산대 1곳", sim.one, 14);
+        drawLane(g, L, "two", "계산대 2곳", sim.two, 130);
+      };
+    }
+
+    Dsviz.createLab("#counter", {
+      caption: "같은 손님 수라도 계산대가 한 곳이면 줄이 계속 길어지고 두 곳이면 금방 줄어든다 (시뮬레이션)",
+      hint: "손님 도착 속도를 조금씩 올려 보세요",
+      controls: [
+        { type: "slider", id: "rate", label: "손님 도착", min: 15, max: 45, step: 5, value: 30, format: (v) => `분당 ${v}명` },
+        { type: "action", id: "rush", label: "손님 몰리기", onClick(sim) { sim.one.queue += 8; sim.two.queue += 8; } },
+        { type: "run" },
+        { type: "reset" },
+      ],
+      metrics: [
+        { id: "one", label: "계산대 1곳 대기", format: (v) => `${v}명` },
+        { id: "two", label: "계산대 2곳 대기", format: (v) => `${v}명` },
+      ],
+      height: 270,
+      exportMs: 12000,
+      init() {
+        return { rand: Dsviz.rng(3), t: 0, next: 0, one: lane(1), two: lane(2) };
+      },
+      step(sim, dt, ctl) {
+        sim.t += dt;
+        // 도착: 분당 rate명 → 평균 간격 60000/rate ms(배속 반영), 0.5~1.5배로 흔들림. 같은 손님을 두 줄에 함께 넣음
+        while (sim.t >= sim.next) {
+          sim.one.queue += 1;
+          sim.two.queue += 1;
+          sim.next += (60000 / ctl.rate / SPEED) * (0.5 + sim.rand());
+        }
+        serve(sim.one, dt);
+        serve(sim.two, dt);
+      },
+      measure: (sim) => ({ one: sim.one.queue, two: sim.two.queue }),
+      draw: drawAll(640),
+      mobile: { width: 360, draw: drawAll(360) },
+    });
+  </script>
+</body>
+</html>

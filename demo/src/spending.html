@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>외식비와 노트북</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="spending"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    const months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
+    // 월 외식비(만원): 1월 20 → 12월 40
+    const dining = [20, 22, 23, 25, 27, 28, 30, 32, 34, 36, 38, 40];
+    // 외식비 밖 지출: 매달 160만원, 4월만 노트북 150만원 추가
+    const laptop = 150;
+    const total = dining.map((v, i) => v + 160 + (i === 3 ? laptop : 0));
+    const ratio = dining[11] / dining[0];
+
+    Dsviz.createDiagram("#spending", {
+      caption: "두 배로 늘어난 외식비보다 한 번 뛴 4월 지출이 먼저 눈에 띈다 (예시 데이터)",
+      draw(g) {
+        g.chart("c", { x: 48, y: 30, w: 500, h: 190, yDomain: [0, 400], yLabel: "월 지출(만원)" });
+        g.lineSeries("total", { chart: "c", role: "alert", label: "전체 지출", dots: true, data: months.map((m, i) => [m, total[i]]) });
+        g.lineSeries("dining", { chart: "c", role: "focus", label: "외식비", dots: true, data: months.map((m, i) => [m, dining[i]]) });
+        g.chip("jump", { chart: "c", x: "4월", y: total[3], align: "left", dx: 14, text: `노트북 +${laptop}만원`, role: "alert" });
+        g.chip("drift", { chart: "c", x: "12월", y: dining[11], align: "right", dx: -14, dy: -30, text: `외식비 ${dining[0]}→${dining[11]}만원, ${ratio}배`, role: "focus" });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.12 },
+        { id: "total", effect: "grow", from: 0.08, to: 0.45 },
+        { id: "jump", effect: "fade", from: 0.3, to: 0.42 },
+        { id: "dining", effect: "grow", from: 0.45, to: 0.8 },
+        { id: "drift", effect: "fade", from: 0.8, to: 0.92 },
+      ],
+    });
+  </script>
+</body>
+</html>

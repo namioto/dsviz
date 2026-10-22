@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>두 반의 점수 분포</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="diagram-1"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    // [구간 가운데 점수, 학생 수], 구간 폭 5점
+    const binsA = [[62.5, 2], [67.5, 9], [72.5, 9], [77.5, 2]];
+    const binsB = [[42.5, 4], [47.5, 7], [92.5, 7], [97.5, 4]];
+    const mean = (b) => b.reduce((s, [x, c]) => s + x * c, 0) / b.reduce((s, [, c]) => s + c, 0);
+    const meanA = Math.round(mean(binsA));
+    const meanB = Math.round(mean(binsB));
+    const nearB = binsB.filter(([x]) => x > 60 && x < 80).reduce((s, [, c]) => s + c, 0);
+    const opt = { xDomain: [40, 100], yDomain: [0, 12], xTicks: 6, yTicks: 3, xFormat: (v) => `${v}` };
+    Dsviz.createDemo("#diagram-1", {
+      steps: [
+        { at: 0, caption: `두 반의 수학 시험 평균은 똑같이 ${meanA}점이다 (예시 데이터)` },
+        { at: 0.27, caption: "A반은 대부분 65~75점에 몰려 있다" },
+        { at: 0.5, caption: "B반은 40점대와 90점대로 갈려 있다" },
+        { at: 0.73, caption: "평균만 보면 두 반의 차이를 놓친다" },
+      ],
+      draw(g) {
+        g.chart("a", { x: 48, y: 30, w: 500, h: 110, ...opt, yLabel: "A반 학생 수(명)" });
+        g.bars("ha", { chart: "a", role: "focus", binWidth: 5, data: binsA });
+        g.refLine("ma", { chart: "a", x: meanA, label: `A반 평균 ${meanA}점`, role: "muted" });
+        g.chart("b", { x: 48, y: 224, w: 500, h: 110, ...opt, yLabel: "B반 학생 수(명)", xLabel: "점수(점)" });
+        g.bars("hb", { chart: "b", role: "compare", binWidth: 5, data: binsB });
+        g.refLine("mb", { chart: "b", x: meanB, label: `B반 평균 ${meanB}점`, role: "muted" });
+        g.chip("gap", { chart: "b", x: meanB, y: 4, text: `평균 근처(60~80점) ${nearB}명`, role: "compare" });
+      },
+      sequence: [
+        { ids: ["a", "b"], effect: "fade", from: 0, to: 0.08 },
+        { ids: ["ma", "mb"], effect: "grow", from: 0.05, to: 0.2, stagger: 0.04 },
+        { ids: ["ha-0", "ha-1", "ha-2", "ha-3"], effect: "grow", from: 0.3, to: 0.4, stagger: 0.03 },
+        { ids: ["hb-0", "hb-1", "hb-2", "hb-3"], effect: "grow", from: 0.53, to: 0.63, stagger: 0.03 },
+        { id: "gap", effect: "fade", from: 0.76, to: 0.84 },
+        { id: "gap", effect: "pulse", from: 0.82, to: 0.93 },
+      ],
+    });
+  </script>
+</body>
+</html>

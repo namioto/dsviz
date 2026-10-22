@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>화분이 보낸 신호</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="plant"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    // timeline-review: 앞의 세 개는 미리 온 신호, 마지막이 잎 떨어짐
+    const signals = [["soil", "흙 마름"], ["tip", "잎 끝 갈색"], ["new", "새 잎 멈춤"]];
+    function layout(g, W, fs) {
+      const left = W < 400 ? 14 : 30, right = W - 44, ay = 110;
+      const step = (right - left - 30) / 4;
+      const xs = [0, 1, 2, 3].map((i) => left + step * (i + 0.5));
+      g.line("axis", { points: [[left, ay], [right, ay]], heads: "end" });
+      g.text("axis-label", { x: right + 8, y: ay, text: "시간", align: "left", size: 12, tone: "ink3" });
+      signals.forEach(([id, label], i) => {
+        g.dot(id, { x: xs[i], y: ay, r: 7, role: "focus" });
+        g.text(id + "-t", { x: xs[i], y: ay + 28, text: label, size: fs });
+      });
+      g.dot("drop", { x: xs[3], y: ay, r: 9, role: "alert" });
+      g.text("drop-t", { x: xs[3], y: ay + 28, text: "잎 떨어짐", size: fs, weight: 700, role: "alert" });
+      const bx0 = xs[0] - 22, bx1 = xs[2] + 22, by = ay - 34;
+      g.line("window", { points: [[bx0, by + 12], [bx0, by], [bx1, by], [bx1, by + 12]], role: "focus", label: "살릴 수 있던 때" });
+    }
+    const sigIds = signals.map((s) => s[0]);
+    Dsviz.createDemo("#plant", {
+      steps: [
+        { at: 0, caption: "잎이 떨어지자 화분이 갑자기 죽은 것처럼 보였다" },
+        { at: 0.3, caption: "그 전에 신호가 세 번 와 있었다" },
+        { at: 0.66, caption: "앞선 신호를 알아챘다면 살릴 수 있었다" },
+      ],
+      draw(g) { layout(g, 640, 13); },
+      mobile: { width: 360, draw(g) { layout(g, 360, 11); } },
+      sequence: [
+        { id: "axis", effect: "grow", from: 0, to: 0.1 },
+        { id: "axis-label", effect: "fade", from: 0.05, to: 0.12 },
+        { ids: ["drop", "drop-t"], effect: "fade", from: 0.1, to: 0.18 },
+        { id: "drop", effect: "pulse", from: 0.16, to: 0.27 },
+        { ids: sigIds, effect: "fade", from: 0.33, to: 0.43, stagger: 0.05 },
+        { ids: sigIds.map((i) => i + "-t"), effect: "fade", from: 0.33, to: 0.43, stagger: 0.05 },
+        { ids: sigIds, effect: "highlight", from: 0.69, to: 0.79 },
+        { id: "window", effect: "grow", from: 0.72, to: 0.86 },
+      ],
+    });
+  </script>
+</body>
+</html>

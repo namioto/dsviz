@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>타입 오류 행 거부</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="diagram-1"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    // process-flow: 넣을 행 → 타입 검사 → 고객 테이블
+    const columns = (w) => [
+      { label: "이름", sub: "문자열", w },
+      { label: "성별", sub: "정수", w },
+      { label: "나이", sub: "정수", w },
+    ];
+    const newRow = [["홍길동", { text: "'남'", role: "alert" }, "30"]];
+    const custRows = [
+      ["김철수", "1", "25"],
+      ["이영희", "2", "31"],
+      { cells: ["", "저장 안 됨", ""], role: "alert", dashed: true },
+    ];
+
+    // 데스크톱/모바일 공통 배치: 표 왼쪽 x, 열 폭, 이름표 위치 함수
+    function layout(g, o) {
+      const inT = g.table("in", { x: o.tx, y: o.top, columns: columns(o.cw), rows: newRow });
+      if (o.side) g.chip("inLabel", { x: o.side, y: inT.y + inT.h / 2, text: "넣을 행" });
+      else g.chip("inLabel", { x: inT.x + inT.w / 2, y: inT.y - 20, text: "넣을 행" });
+
+      const cx = inT.x + inT.w / 2;
+      const checkY = inT.y + inT.h + 48;
+      g.box("check", { x: cx - o.bw / 2, y: checkY, w: o.bw, h: 40, label: "타입 검사", role: "alert" });
+      g.chip("err", { x: o.errX, y: o.errY(checkY), text: "타입 오류: 성별은 정수", role: "alert", align: o.errAlign || "center" });
+
+      const custTop = checkY + 40 + 56 + (o.side ? 0 : 40);
+      const cT = g.table("cust", { x: o.tx, y: custTop, columns: columns(o.cw), rows: custRows });
+      if (o.side) g.chip("custLabel", { x: o.side, y: cT.y + cT.h / 2, text: "고객 테이블" });
+      else g.chip("custLabel", { x: cT.x + cT.w / 2, y: cT.y - 20, text: "고객 테이블" });
+
+      g.arrow("a1", { from: "in.r0c1", to: "check", label: "삽입" });
+      g.arrow("a2", { from: "check", to: o.side ? "cust.h1" : [cx, custTop - 42], label: "차단", role: "alert", dashed: true });
+    }
+
+    Dsviz.createDiagram("#diagram-1", {
+      caption: "성별에 '남'을 넣은 행은 타입 오류로 저장되지 않는다",
+      draw(g) {
+        layout(g, { tx: 170, top: 20, cw: 110, side: 80, bw: 180, errX: 431, errAlign: "left", errY: (y) => y + 20 });
+      },
+      mobile: {
+        width: 360,
+        draw(g) {
+          layout(g, { tx: 30, top: 40, cw: 100, side: 0, bw: 160, errX: 168, errAlign: "right", errY: (y) => y + 72 });
+        },
+      },
+      sequence: [
+        { ids: ["cust.h", "cust.r0", "cust.r1", "custLabel"], effect: "fade", from: 0, to: 0.15 },
+        { ids: ["in", "inLabel"], effect: "fade", from: 0.12, to: 0.27 },
+        { id: "a1", effect: "grow", from: 0.25, to: 0.4 },
+        { id: "check", effect: "fade", from: 0.3, to: 0.4 },
+        { ids: ["check", "in.r0c1"], effect: "highlight", from: 0.42, to: 0.55 },
+        { id: "err", effect: "fade", from: 0.45, to: 0.58 },
+        { id: "a2", effect: "grow", from: 0.58, to: 0.75 },
+        { id: "cust.r2", effect: "fade", from: 0.66, to: 0.78 },
+        { id: "cust.r2c1", effect: "pulse", from: 0.8, to: 0.92 },
+      ],
+    });
+  </script>
+</body>
+</html>

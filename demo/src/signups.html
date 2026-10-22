@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>월별 신규 가입자</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="signups"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    const data = [["1월", 320], ["2월", 410], ["3월", 380], ["4월", 620], ["5월", 590], ["6월", 640]];
+    const jump = data[3][1] - data[2][1];
+
+    Dsviz.createDiagram("#signups", {
+      caption: `신규 가입자는 4월에 한 달 만에 ${jump}명 늘었다`,
+      draw(g) {
+        g.chart("c", { x: 52, y: 30, w: 540, h: 180, yLabel: "신규 가입자(명)" });
+        g.lineSeries("s", { chart: "c", role: "muted", dots: true, data });
+        g.segment("jump", { series: "s", from: "3월", to: "4월", role: "focus" });
+        g.chip("delta", { chart: "c", x: "4월", y: 620, dy: -24, text: `+${jump}명`, role: "focus" });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.15 },
+        { id: "s", effect: "grow", from: 0.1, to: 0.6 },
+        { id: "jump", effect: "grow", from: 0.62, to: 0.78 },
+        { id: "delta", effect: "fade", from: 0.74, to: 0.88 },
+        { id: "delta", effect: "pulse", from: 0.8, to: 0.94 },
+      ],
+    });
+  </script>
+</body>
+</html>

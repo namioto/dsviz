@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>첫 주 이탈 인원</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="diagram-1"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    Dsviz.createDiagram("#diagram-1", {
+      caption: "이탈률 12%는 신규 고객 열두 명이 첫 주에 떠났다는 뜻이다",
+      alt: "이번 달 가입 고객 100명을 사람 아이콘 100개로 그리고, 그중 첫 주 안에 떠난 12명만 색으로 표시한 그림",
+      draw(g) {
+        g.people("crowd", { x: 140, y: 70, total: 100, cols: 20, size: 23, mark: 12, role: "alert", label: "이번 달 가입 고객 100명" });
+        g.chip("rate", { x: 66, y: 139, text: "이탈률 12%", role: "muted" });
+        g.chip("lost", { x: 282, y: 46, text: "첫 주 이탈 12명", role: "alert" });
+      },
+      mobile: {
+        width: 360,
+        draw(g) {
+          g.people("crowd", { x: 67, y: 70, total: 100, cols: 10, size: 22, mark: 12, role: "alert", label: "이번 달 가입 고객 100명" });
+          g.chip("rate", { x: 110, y: 40, text: "이탈률 12%", role: "muted" });
+          g.chip("lost", { x: 250, y: 40, text: "첫 주 이탈 12명", role: "alert" });
+        },
+      },
+      sequence: [
+        { id: "crowd", effect: "fade", from: 0, to: 0.3 },
+        { id: "rate", effect: "fade", from: 0.25, to: 0.45 },
+        { id: "crowd", effect: "highlight", from: 0.45, to: 0.7 },
+        { id: "lost", effect: "fade", from: 0.65, to: 0.85 },
+        { id: "lost", effect: "pulse", from: 0.8, to: 0.94 },
+      ],
+    });
+  </script>
+</body>
+</html>

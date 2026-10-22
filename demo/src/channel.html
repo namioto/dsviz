@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>분기별 채널 매출</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="diagram-1"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    const q = ["1분기", "2분기", "3분기", "4분기"];
+    const online = [12, 18, 25, 34];
+    const store = [30, 28, 27, 25];
+    Dsviz.createDiagram("#diagram-1", {
+      caption: "4분기에 온라인 매출이 매장을 처음 앞질렀다",
+      draw(g) {
+        g.chart("c", { x: 48, y: 30, w: 500, h: 180, yDomain: [0, 40], yLabel: "매출(억원)" });
+        g.lineSeries("store", { chart: "c", role: "compare", label: "매장", dots: true, data: q.map((x, i) => [x, store[i]]) });
+        g.lineSeries("online", { chart: "c", role: "focus", label: "온라인", dots: true, data: q.map((x, i) => [x, online[i]]) });
+        g.segment("cross", { series: "online", from: "3분기", to: "4분기", role: "focus" });
+        g.chip("lead", { chart: "c", x: "4분기", y: online[3], dy: -24, align: "right", dx: 6, text: `온라인 ${online[3]}억 vs 매장 ${store[3]}억` , role: "focus" });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.15 },
+        { id: "store", effect: "grow", from: 0.1, to: 0.45 },
+        { id: "online", effect: "grow", from: 0.4, to: 0.75 },
+        { id: "cross", effect: "grow", from: 0.75, to: 0.85 },
+        { id: "lead", effect: "fade", from: 0.8, to: 0.92 },
+      ],
+    });
+  </script>
+</body>
+</html>

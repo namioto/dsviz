@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>커피숍 병목</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="diagram-1"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    Dsviz.createDiagram("#diagram-1", {
+      caption: "제조 머신을 늘려도 계산대가 하나면 줄은 줄지 않는다",
+      alt: "주문 접수, 계산, 제조, 픽업 네 단계 중 계산대 한 곳 앞에 손님 6명이 기다리고, 제조 머신 3대는 대기 중이다",
+      draw(g) {
+        g.box("order", { x: 20, y: 40, w: 120, h: 56, label: "주문 접수" });
+        g.box("pay", { x: 180, y: 40, w: 120, h: 56, label: "계산", sub: "계산대 1곳", role: "alert" });
+        g.box("make", { x: 340, y: 40, w: 120, h: 56, label: "제조" });
+        g.box("pickup", { x: 500, y: 40, w: 120, h: 56, label: "픽업" });
+        g.arrow("a1", { from: "order", to: "pay" });
+        g.arrow("a2", { from: "pay", to: "make" });
+        g.arrow("a3", { from: "make", to: "pickup" });
+        g.chip("narrow", { x: 240, y: 14, text: "가장 좁은 단계", role: "alert" });
+
+        g.people("queue", { x: 198, y: 124, total: 6, cols: 3, size: 26, gap: 10, mark: 6, role: "alert", label: "기다리는 손님 6명" });
+
+        g.box("m1", { x: 350, y: 120, w: 100, h: 28, label: "머신 1", size: 12 });
+        g.box("m2", { x: 350, y: 156, w: 100, h: 28, label: "머신 2", size: 12 });
+        g.box("m3", { x: 350, y: 192, w: 100, h: 28, label: "머신 3", size: 12 });
+        g.status("idle", { x: 400, y: 244, text: "대기 중", role: "focus" });
+      },
+      mobile: {
+        width: 360,
+        draw(g) {
+          g.box("order", { x: 20, y: 20, w: 140, h: 52, label: "주문 접수" });
+          g.box("pay", { x: 20, y: 112, w: 140, h: 52, label: "계산", sub: "계산대 1곳", role: "alert" });
+          g.box("make", { x: 20, y: 300, w: 140, h: 52, label: "제조" });
+          g.box("pickup", { x: 20, y: 430, w: 140, h: 52, label: "픽업" });
+          g.arrow("a1", { from: "order", to: "pay" });
+          g.arrow("a2", { from: "pay", to: "make" });
+          g.arrow("a3", { from: "make", to: "pickup" });
+          g.chip("narrow", { x: 266, y: 138, text: "가장 좁은 단계", role: "alert" });
+
+          g.people("queue", { x: 206, y: 176, total: 6, cols: 3, size: 26, gap: 10, mark: 6, role: "alert", label: "기다리는 손님 6명" });
+
+          g.box("m1", { x: 196, y: 284, w: 130, h: 26, label: "머신 1", size: 12 });
+          g.box("m2", { x: 196, y: 318, w: 130, h: 26, label: "머신 2", size: 12 });
+          g.box("m3", { x: 196, y: 352, w: 130, h: 26, label: "머신 3", size: 12 });
+          g.status("idle", { x: 261, y: 400, text: "대기 중", role: "focus" });
+        },
+      },
+      sequence: [
+        { ids: ["order", "pay", "make", "pickup"], effect: "grow", from: 0.0, to: 0.18, stagger: 0.05 },
+        { ids: ["a1", "a2", "a3"], effect: "grow", from: 0.08, to: 0.26, stagger: 0.05 },
+        { ids: ["m1", "m2", "m3"], effect: "fade", from: 0.3, to: 0.42, stagger: 0.05 },
+        { id: "idle", effect: "status", from: 0.42, to: 0.62 },
+        { id: "queue", effect: "fade", from: 0.5, to: 0.66 },
+        { id: "queue", effect: "highlight", from: 0.66, to: 0.8 },
+        { id: "pay", effect: "highlight", from: 0.68, to: 0.82 },
+        { id: "narrow", effect: "fade", from: 0.74, to: 0.86 },
+        { id: "pay", effect: "pulse", from: 0.82, to: 0.94 },
+      ],
+    });
+  </script>
+</body>
+</html>

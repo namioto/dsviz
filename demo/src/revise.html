@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>퇴고 반복</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="revise"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    // loop: 초안 → 읽기/고치기 반복 → 걸리는 문장 0개일 때 퇴고 끝
+    Dsviz.createDiagram("#revise", {
+      caption: "읽다가 걸리는 문장이 하나도 없을 때 비로소 퇴고가 끝난다",
+      draw(g) {
+        g.box("draft", { x: 20, y: 95, w: 100, h: 50, label: "초안" });
+        g.arrow("start", { from: "draft", to: [218, 120] });
+        g.loop("cycle", { cx: 320, cy: 120, r: 90, role: "focus", label: "퇴고 반복" });
+        g.chip("read", { x: 320, y: 30, text: "소리 내어 읽기", role: "focus" });
+        g.chip("fix", { x: 320, y: 210, text: "걸리는 문장 고치기", role: "warn" });
+        g.arrow("exit", { from: [410, 120], to: "end", role: "compare", label: "걸리는 문장 0개" });
+        g.box("end", { x: 520, y: 92, w: 100, h: 56, label: "퇴고 끝", role: "compare" });
+      },
+      mobile: {
+        width: 360,
+        draw(g) {
+          g.box("draft", { x: 130, y: 10, w: 100, h: 46, label: "초안" });
+          g.arrow("start", { from: "draft", to: [180, 112] });
+          g.loop("cycle", { cx: 180, cy: 200, r: 80, role: "focus", label: "퇴고 반복" });
+          g.chip("read", { x: 290, y: 200, text: "소리 내어 읽기", role: "focus" });
+          g.chip("fix", { x: 70, y: 200, text: "걸리는 문장 고치기", role: "warn" });
+          g.arrow("exit", { from: [180, 280], to: "end", role: "compare", label: "걸리는 문장 0개" });
+          g.box("end", { x: 130, y: 360, w: 100, h: 50, label: "퇴고 끝", role: "compare" });
+        },
+      },
+      sequence: [
+        { id: "start", effect: "grow", from: 0, to: 0.15 },
+        { id: "cycle", effect: "grow", from: 0.12, to: 0.4 },
+        { id: "read", effect: "fade", from: 0.14, to: 0.26 },
+        { id: "fix", effect: "fade", from: 0.26, to: 0.38 },
+        { id: "cycle", effect: "cycle", from: 0.4, to: 0.78, laps: 2 },
+        { id: "exit", effect: "grow", from: 0.78, to: 0.92 },
+        { id: "end", effect: "fade", from: 0.82, to: 0.94 },
+        { id: "end", effect: "pulse", from: 0.88, to: 0.98 },
+      ],
+    });
+  </script>
+</body>
+</html>

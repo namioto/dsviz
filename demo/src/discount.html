@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>할인율과 이익</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="discount"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    const rates = [0, 5, 10, 15, 20, 25, 30, 35, 40];
+    // 주문 수(건): 할인율 d에 따라 100 + 10d + 0.2d²
+    const orders = rates.map((d) => [d, 100 + 10 * d + 0.2 * d * d]);
+    // 이익(만원): 주문 수 x (마진 40% - 할인율) x 객단가 1만원
+    const profit = orders.map(([d, n]) => [d, +((n * (40 - d)) / 100).toFixed(1)]);
+    const best = profit.reduce((a, b) => (b[1] > a[1] ? b : a));
+    const at = (rows, d) => rows.find((r) => r[0] === d)[1];
+    const last = rates[rates.length - 1];
+    const pct = (v) => `${v}%`;
+
+    Dsviz.createDemo("#discount", {
+      steps: [
+        { at: 0, caption: "할인율을 높이면 주문 수는 계속 늘어난다 (예시 데이터)" },
+        { at: 0.4, caption: `이익은 할인율 ${best[0]}%에서 가장 크고 그 뒤로 줄어든다` },
+        { at: 0.71, caption: "주문 수만 보면 이 꺾이는 지점을 놓친다" },
+      ],
+      draw(g) {
+        g.chart("co", { x: 48, y: 30, w: 500, h: 110, xDomain: [0, 40], xTicks: 4, xFormat: pct, yDomain: [0, 900], yLabel: "주문 수(건)" });
+        g.lineSeries("orders", { chart: "co", role: "focus", label: "주문 수", dots: true, data: orders });
+        g.chart("cp", { x: 48, y: 230, w: 500, h: 110, xDomain: [0, 40], xTicks: 4, xFormat: pct, yDomain: [0, 100], yLabel: "이익(만원)", xLabel: "할인율" });
+        g.lineSeries("profit", { chart: "cp", role: "accent", label: "이익", labelDy: -14, dots: true, data: profit });
+        g.refLine("peakO", { chart: "co", x: best[0], role: "alert", label: `할인율 ${best[0]}%` });
+        g.refLine("peakP", { chart: "cp", x: best[0], role: "alert", label: `최대 ${best[1]}만원`, labelSide: "left" });
+        g.segment("moreOrders", { series: "orders", from: best[0], to: last, role: "focus", width: 5 });
+        g.chip("ordersUp", { chart: "co", x: 31, y: 180, text: `주문 ${at(orders, best[0])}→${at(orders, last)}건`, role: "focus" });
+        g.segment("lessProfit", { series: "profit", from: best[0], to: last, role: "alert", width: 5 });
+        g.chip("profitDown", { chart: "cp", x: 28, y: 18, text: `이익 ${best[1]}→${at(profit, last)}만원`, role: "alert" });
+      },
+      sequence: [
+        { id: "co", effect: "fade", from: 0, to: 0.06 },
+        { id: "orders", effect: "grow", from: 0.04, to: 0.32 },
+        { id: "cp", effect: "fade", from: 0.42, to: 0.48 },
+        { id: "profit", effect: "grow", from: 0.46, to: 0.62 },
+        { id: "peakP", effect: "grow", from: 0.6, to: 0.66 },
+        { id: "peakO", effect: "grow", from: 0.63, to: 0.69 },
+        { id: "moreOrders", effect: "grow", from: 0.73, to: 0.81 },
+        { id: "ordersUp", effect: "fade", from: 0.78, to: 0.84 },
+        { id: "lessProfit", effect: "grow", from: 0.82, to: 0.9 },
+        { id: "profitDown", effect: "fade", from: 0.86, to: 0.93 },
+      ],
+    });
+  </script>
+</body>
+</html>

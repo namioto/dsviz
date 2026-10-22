@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>약속 장소 가는 법</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="transport"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    // selection: 남은 시간에 따라 셋 중 하나 고르기
+    const options = [
+      ["walk", "걷기", "시간이 넉넉할 때"],
+      ["bus", "버스", "조금 빠듯할 때"],
+      ["taxi", "택시", "가장 빠름, 늦을 때만"],
+    ];
+    function layout(g, m) {
+      g.person("me", { x: m.px, y: m.py, size: 44, label: "나" });
+      g.chip("now", { x: m.px, y: m.py + 58, text: "남은 시간 넉넉", role: "focus" });
+      options.forEach(([id, label, sub], i) => {
+        const y = m.top + i * (m.bh + 24);
+        g.box(id, { x: m.bx, y, w: m.bw, h: m.bh, label, sub, role: id === "walk" ? "focus" : undefined });
+        g.arrow("to-" + id, { from: "me", to: id, role: id === "walk" ? "focus" : undefined });
+      });
+    }
+    const ids = options.map((o) => o[0]);
+    Dsviz.createDiagram("#transport", {
+      caption: "가장 빠른 택시가 아니라 남은 시간에 맞는 하나를 고른다",
+      draw(g) { layout(g, { px: 90, py: 120, bx: 380, bw: 220, bh: 60, top: 30 }); },
+      mobile: { width: 360, draw(g) { layout(g, { px: 50, py: 120, bx: 160, bw: 180, bh: 60, top: 30 }); } },
+      sequence: [
+        { id: "me", effect: "fade", from: 0, to: 0.12 },
+        { id: "now", effect: "fade", from: 0.08, to: 0.22 },
+        { ids: ids.map((i) => "to-" + i), effect: "grow", from: 0.2, to: 0.4, stagger: 0.06 },
+        { ids, effect: "fade", from: 0.3, to: 0.44, stagger: 0.06 },
+        { ids: ["to-walk", "walk"], effect: "highlight", from: 0.68, to: 0.82 },
+        { id: "walk", effect: "pulse", from: 0.78, to: 0.94 },
+      ],
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>키오스크 주문</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../../skills/dsviz/runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="kiosk"></div>
+  </main>
+  <script src="../../skills/dsviz/runtime/dsviz.js"></script>
+  <script>
+    // system-map: 손님 → 키오스크 → 주방 → 진동벨 → 손님, 직접 대화 없음
+    Dsviz.createDiagram("#kiosk", {
+      caption: "손님과 주방은 직접 말하지 않고 키오스크와 진동벨로만 소통한다",
+      draw(g) {
+        g.person("guest", { x: 80, y: 140, size: 48, label: "손님" });
+        g.box("kiosk", { x: 250, y: 20, w: 140, h: 52, label: "키오스크" });
+        g.box("bell", { x: 250, y: 208, w: 140, h: 52, label: "진동벨" });
+        g.box("kitchen", { x: 480, y: 108, w: 140, h: 64, label: "주방" });
+        g.arrow("order", { from: "guest", to: "kiosk", role: "focus", label: "주문" });
+        g.arrow("ticket", { from: "kiosk", to: "kitchen", role: "focus", label: "주문 내용" });
+        g.arrow("done", { from: "kitchen", to: "bell", role: "compare", label: "완료 신호" });
+        g.arrow("ring", { from: "bell", to: "guest", role: "compare", label: "진동" });
+        g.line("nodirect", { points: [[124, 140], [466, 140]], role: "alert", dashed: true, label: "직접 대화 없음" });
+        g.status("cook", { x: 550, y: 192, text: "조리 중" });
+      },
+      mobile: {
+        width: 360,
+        draw(g) {
+          g.person("guest", { x: 180, y: 34, size: 44, label: "손님" });
+          g.box("kiosk", { x: 10, y: 116, w: 110, h: 46, label: "키오스크" });
+          g.box("bell", { x: 240, y: 116, w: 110, h: 46, label: "진동벨" });
+          g.box("kitchen", { x: 110, y: 290, w: 140, h: 56, label: "주방" });
+          g.arrow("order", { from: "guest", to: "kiosk", role: "focus", label: "주문" });
+          g.arrow("ticket", { from: "kiosk", to: "kitchen", role: "focus", label: "주문 내용", labelSide: "below" });
+          g.arrow("done", { from: "kitchen", to: "bell", role: "compare", label: "완료 신호", labelSide: "below" });
+          g.arrow("ring", { from: "bell", to: "guest", role: "compare", label: "진동" });
+          g.line("nodirect", { points: [[180, 82], [180, 280]], role: "alert", dashed: true, label: "직접 대화 없음" });
+          g.status("cook", { x: 180, y: 364, text: "조리 중" });
+        },
+      },
+      sequence: [
+        { id: "kiosk", effect: "fade", from: 0, to: 0.12 },
+        { id: "order", effect: "grow", from: 0.04, to: 0.2 },
+        { id: "order", effect: "travel", from: 0.04, to: 0.2, token: "주문" },
+        { id: "kitchen", effect: "fade", from: 0.16, to: 0.28 },
+        { id: "ticket", effect: "grow", from: 0.18, to: 0.36 },
+        { id: "ticket", effect: "travel", from: 0.18, to: 0.36, token: "주문서" },
+        { id: "cook", effect: "status", from: 0.34, to: 0.55 },
+        { id: "bell", effect: "fade", from: 0.5, to: 0.62 },
+        { id: "done", effect: "grow", from: 0.52, to: 0.68 },
+        { id: "ring", effect: "grow", from: 0.64, to: 0.8 },
+        { id: "guest", effect: "pulse", from: 0.76, to: 0.86 },
+        { id: "nodirect", effect: "grow", from: 0.8, to: 0.94 },
+      ],
+    });
+  </script>
+</body>
+</html>
