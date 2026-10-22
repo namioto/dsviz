@@ -30,7 +30,8 @@ dsviz 스킬로 아래 글을 설명하는 다이어그램을 만들어줘.
 - ffmpeg-full: WebP와 GIF 내보내기에 씁니다. 기본 `ffmpeg`에는 WebP 인코더가 없습니다
 
 ```
-brew install ffmpeg-full
+brew install ffmpeg-full   # macOS
+winget install ffmpeg       # Windows
 ```
 
 ## 라이선스
