@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TITLE</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="./dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="diagram-1"></div>
+  </main>
+  <script src="./dsviz.js"></script>
+  <script>
+    Dsviz.createDemo("#diagram-1", {
+      steps: [
+        { at: 0, caption: "STEP 1" },
+        { at: 0.5, caption: "STEP 2 (결론)" },
+      ],
+      draw(g) {
+        // 640 기준 좌표
+      },
+      sequence: [],
+    });
+  </script>
+</body>
+</html>

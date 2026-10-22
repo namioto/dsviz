@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>차트 예시</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="visitors"></div>
+    <div id="wait"></div>
+    <div id="temperature"></div>
+    <div id="histogram"></div>
+    <div id="grouped"></div>
+    <div id="stacked"></div>
+    <div id="scatter"></div>
+  </main>
+  <script src="../runtime/dsviz.js"></script>
+  <script>
+    const hours = ["9시", "11시", "13시", "15시", "17시", "19시", "21시"];
+
+    // 선 그래프 2개 시리즈: 범주형 x, 끝 라벨, 나중에 드러나는 강조
+    Dsviz.createDiagram("#visitors", {
+      caption: "주말 손님은 평일보다 늦게 몰리고, 정점은 오후 3시에 온다",
+      draw(g) {
+        g.chart("c", { x: 48, y: 30, w: 500, h: 180, yLabel: "손님 수(명)" });
+        g.lineSeries("weekday", { chart: "c", role: "muted", label: "평일", data: hours.map((h, i) => [h, [30, 52, 64, 40, 46, 38, 20][i]]) });
+        g.lineSeries("weekend", { chart: "c", role: "focus", label: "주말", dots: true, data: hours.map((h, i) => [h, [12, 34, 58, 82, 66, 44, 24][i]]) });
+        g.segment("rise", { series: "weekend", from: "13시", to: "15시", role: "focus" });
+        g.chip("peak", { chart: "c", x: "15시", y: 82, dy: -22, text: "정점 82명", role: "focus" });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.15 },
+        { id: "weekday", effect: "grow", from: 0.1, to: 0.45 },
+        { id: "weekend", effect: "grow", from: 0.4, to: 0.8 },
+        { id: "weekend", effect: "highlight", from: 0.4, to: 0.5 },
+        { id: "rise", effect: "grow", from: 0.8, to: 0.88 },
+        { id: "peak", effect: "fade", from: 0.84, to: 0.94 },
+      ],
+    });
+
+    // 막대: 값 라벨, 시차 등장, 가장 긴 막대만 나중에 강조
+    Dsviz.createDiagram("#wait", {
+      caption: "대기 시간은 계산대에서 가장 길다",
+      draw(g) {
+        g.chart("c", { x: 48, y: 30, w: 520, h: 170, yLabel: "평균 대기(분)" });
+        g.bars("b", {
+          chart: "c",
+          labels: true,
+          format: (v) => `${v}분`,
+          roles: ["muted", "alert", "muted", "muted"],
+          data: [["주문", 1.5], ["계산", 6.2], ["제조", 2.4], ["픽업", 0.8]],
+        });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.15 },
+        { ids: ["b-0", "b-1", "b-2", "b-3"], effect: "grow", from: 0.1, to: 0.35, stagger: 0.08 },
+        { id: "b-1", effect: "highlight", from: 0.7, to: 0.85 },
+        { id: "b-1", effect: "pulse", from: 0.8, to: 0.95 },
+      ],
+    });
+
+    // 영역 + 점 + 기준선: 숫자형 x
+    Dsviz.createDiagram("#temperature", {
+      caption: "실내 온도는 오후 2시부터 기준 26도를 넘는다",
+      draw(g) {
+        g.chart("c", { x: 48, y: 30, w: 520, h: 170, yDomain: [18, 32], yLabel: "온도(°C)", xLabel: "시각", xFormat: (v) => `${v}시` });
+        g.areaSeries("temp", { chart: "c", role: "warn", dots: true, curve: "smooth", data: [[8, 21], [10, 23], [12, 25], [14, 27.5], [16, 29], [18, 27], [20, 24]] });
+        g.refLine("limit", { chart: "c", y: 26, role: "alert", label: "기준 26도", labelAt: "start" });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.15 },
+        { id: "limit", effect: "grow", from: 0.1, to: 0.3 },
+        { id: "temp", effect: "grow", from: 0.3, to: 0.9 },
+      ],
+    });
+
+    // 히스토그램(숫자형 x 막대) + 평균 기준선 + 시리즈 없이 구간 경계에 정확히 놓이는 refLine
+    Dsviz.createDiagram("#histogram", {
+      caption: "배달 시간 대부분은 25~35분이고, 평균 31분은 오른쪽 긴 꼬리 쪽으로 끌려간다 (예시 데이터)",
+      draw(g) {
+        const bins = [[17.5, 2], [22.5, 9], [27.5, 16], [32.5, 12], [37.5, 5], [42.5, 3], [47.5, 2], [52.5, 1]];
+        const n = bins.reduce((a, [, c]) => a + c, 0);
+        const mean = bins.reduce((a, [x, c]) => a + x * c, 0) / n;
+        g.chart("c", { x: 48, y: 30, w: 520, h: 160, yLabel: "주문 수(건)", xLabel: "배달 시간(분)", xFormat: (v) => `${v}` });
+        g.bars("h", { chart: "c", role: "muted", binWidth: 5, data: bins });
+        g.refLine("mean", { chart: "c", x: +mean.toFixed(1), label: `평균 ${Math.round(mean)}분`, role: "alert" });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.15 },
+        { ids: ["h-0", "h-1", "h-2", "h-3", "h-4", "h-5", "h-6", "h-7"], effect: "grow", from: 0.1, to: 0.3, stagger: 0.05 },
+        { id: "mean", effect: "grow", from: 0.75, to: 0.9 },
+      ],
+    });
+
+    // 묶은 막대: 범주마다 시리즈 2개, 범례 자동
+    Dsviz.createDiagram("#grouped", {
+      caption: "두 지점 모두 주말 매출이 평일보다 높고, 강남점은 차이가 더 크다 (예시 데이터)",
+      draw(g) {
+        g.chart("c", { x: 48, y: 30, w: 520, h: 160, yLabel: "매출(만원)" });
+        g.groupedBars("s", {
+          chart: "c",
+          series: [
+            { id: "wd", label: "평일", role: "muted", data: [["강남점", 120], ["홍대점", 95], ["잠실점", 80]] },
+            { id: "we", label: "주말", role: "focus", data: [["강남점", 210], ["홍대점", 130], ["잠실점", 105]] },
+          ],
+        });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.15 },
+        { ids: ["s-wd-0", "s-wd-1", "s-wd-2"], effect: "grow", from: 0.1, to: 0.3, stagger: 0.05 },
+        { ids: ["s-we-0", "s-we-1", "s-we-2"], effect: "grow", from: 0.4, to: 0.6, stagger: 0.05 },
+      ],
+    });
+
+    // 쌓은 막대: 시리즈를 아래부터 쌓고 조각 사이 2px
+    Dsviz.createDiagram("#stacked", {
+      caption: "하루 시간 중 회의가 늘어난 만큼 집중 작업 시간이 줄었다 (예시 데이터)",
+      draw(g) {
+        g.chart("c", { x: 48, y: 30, w: 520, h: 160, yLabel: "시간" });
+        g.stackedBars("t", {
+          chart: "c",
+          series: [
+            { id: "focus", label: "집중 작업", role: "focus", data: [["1월", 5], ["2월", 4.5], ["3월", 3.5], ["4월", 2.5]] },
+            { id: "meet", label: "회의", role: "warn", data: [["1월", 1.5], ["2월", 2], ["3월", 3], ["4월", 4]] },
+            { id: "etc", label: "기타", role: "muted", data: [["1월", 1.5], ["2월", 1.5], ["3월", 1.5], ["4월", 1.5]] },
+          ],
+        });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.15 },
+        { ids: ["t-focus-0", "t-focus-1", "t-focus-2", "t-focus-3"], effect: "grow", from: 0.1, to: 0.3, stagger: 0.04 },
+        { ids: ["t-meet-0", "t-meet-1", "t-meet-2", "t-meet-3"], effect: "grow", from: 0.35, to: 0.55, stagger: 0.04 },
+        { ids: ["t-etc-0", "t-etc-1", "t-etc-2", "t-etc-3"], effect: "grow", from: 0.6, to: 0.8, stagger: 0.04 },
+      ],
+    });
+
+    // 산점도: x 순서대로 점이 나타남
+    Dsviz.createDiagram("#scatter", {
+      caption: "공부 시간이 길수록 점수가 높은 경향이지만 흩어짐도 크다 (예시 데이터)",
+      draw(g) {
+        const rand = Dsviz.rng(7);
+        const pts = Array.from({ length: 40 }, () => {
+          const h = 1 + rand() * 9;
+          return [+h.toFixed(1), Math.round(Math.min(100, 40 + h * 5 + (rand() - 0.5) * 30))];
+        });
+        g.chart("c", { x: 48, y: 30, w: 520, h: 170, xDomain: [0, 10], yDomain: [0, 100], yLabel: "점수", xLabel: "주간 공부 시간(시간)" });
+        g.scatter("p", { chart: "c", role: "focus", data: pts });
+      },
+      sequence: [
+        { id: "c", effect: "fade", from: 0, to: 0.15 },
+        { id: "p", effect: "grow", from: 0.1, to: 0.8 },
+      ],
+    });
+  </script>
+</body>
+</html>

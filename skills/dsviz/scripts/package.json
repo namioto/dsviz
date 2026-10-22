@@ -1,0 +1,8 @@
+{
+  "name": "dsviz-scripts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.58.0"
+  }
+}

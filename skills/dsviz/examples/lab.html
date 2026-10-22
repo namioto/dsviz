@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>실험 예시</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="queue"></div>
+  </main>
+  <script src="../runtime/dsviz.js"></script>
+  <script>
+    // mode-compare / capacity-queue: 계산대 수를 바꾸며 대기 줄을 직접 확인
+    // 6배속: 화면 10초 = 시뮬레이션 1분. 계산대 한 곳은 분당 25명 처리
+    const SPEED = 6;
+    const SERVICE_MS = 60000 / 25 / SPEED;
+    Dsviz.createLab("#queue", {
+      caption: "손님이 같은 속도로 와도 계산대가 하나면 줄이 계속 길어진다 (시뮬레이션)",
+      hint: "계산대 수를 바꾸고 실행해 보세요",
+      controls: [
+        { type: "toggle", id: "counters", label: "계산대 수", options: [[1, "계산대 1곳"], [2, "계산대 2곳"]], value: 1 },
+        { type: "slider", id: "rate", label: "손님 도착", min: 20, max: 50, step: 5, value: 35, format: (v) => `분당 ${v}명` },
+        { type: "run" },
+        { type: "reset" },
+      ],
+      metrics: [
+        { id: "waiting", label: "기다리는 손님", format: (v) => `${v}명` },
+        { id: "served", label: "계산 끝난 손님", format: (v) => `${v}명` },
+      ],
+      exportMs: 9000,
+      init(ctl) {
+        return { rand: Dsviz.rng(3), queue: 0, served: 0, next: 0, busy: Array(ctl.counters).fill(0), t: 0 };
+      },
+      step(sim, dt, ctl) {
+        sim.t += dt;
+        // 도착: 분당 rate명 → 평균 간격 60000/rate ms(배속 반영), 0.5~1.5배로 흔들림
+        while (sim.t >= sim.next) {
+          sim.queue += 1;
+          sim.next += (60000 / ctl.rate / SPEED) * (0.5 + sim.rand());
+        }
+        sim.busy = sim.busy.map((left) => {
+          if (left > 0) {
+            left -= dt;
+            if (left <= 0) sim.served += 1;
+          }
+          if (left <= 0 && sim.queue > 0) {
+            sim.queue -= 1;
+            return SERVICE_MS;
+          }
+          return Math.max(0, left);
+        });
+      },
+      measure: (sim) => ({ waiting: sim.queue, served: sim.served }),
+      draw(g, sim, ctl) {
+        g.text("qtitle", { x: 20, y: 14, text: "대기 줄", align: "left", tone: "ink3", size: 11 });
+        const shown = Math.min(sim.queue, 24);
+        for (let i = 0; i < shown; i++) g.dot(`q${i}`, { x: 360 - i * 14, y: 70, r: 5, role: sim.queue > 10 ? "alert" : "muted" });
+        if (sim.queue > 24) g.text("more", { x: 20, y: 96, text: `+${sim.queue - 24}명 더`, align: "left", tone: "ink3", size: 11 });
+        for (let k = 0; k < 2; k++) {
+          const open = k < ctl.counters;
+          const y = 30 + k * 60;
+          g.box(`c${k}`, { x: 420, y, w: 140, h: 44, label: open ? `계산대 ${k + 1}` : "닫힘", role: open ? (sim.busy[k] > 0 ? "focus" : "neutral") : "neutral", dashed: !open });
+          if (open) g.arrow(`a${k}`, { from: [374, 70], to: `c${k}`, role: "muted" });
+        }
+      },
+    });
+  </script>
+</body>
+</html>

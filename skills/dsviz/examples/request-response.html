@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>요청과 응답</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="request-response"></div>
+    <div id="retry-loop"></div>
+  </main>
+  <script src="../runtime/dsviz.js"></script>
+  <script>
+    // system-map: 손님 → 주방 요청, 조리 중, 완성 응답
+    Dsviz.createDiagram("#request-response", {
+      caption: "손님은 주문을 넣고 기다리며, 완성된 음식은 주방에서 되돌아온다",
+      draw(g) {
+        g.box("guest", { x: 20, y: 20, w: 140, h: 150, label: "손님", labelAt: "top" });
+        g.box("order", { x: 50, y: 80, w: 80, h: 34, label: "주문서", role: "focus", size: 11 });
+        g.box("kitchen", { x: 480, y: 20, w: 140, h: 150, label: "주방", labelAt: "top" });
+        g.box("pan", { x: 510, y: 80, w: 80, h: 34, label: "조리대", role: "warn", size: 11 });
+        g.arrow("req", { from: "guest", to: "kitchen", offset: -30, role: "focus", label: "주문" });
+        g.arrow("res", { from: "kitchen", to: "guest", offset: -30, role: "compare", dashed: true, label: "음식", labelSide: "below" });
+        g.status("cook", { at: "kitchen", text: "조리 중" });
+      },
+      mobile: {
+        width: 360,
+        draw(g) {
+          g.box("guest", { x: 10, y: 10, w: 340, h: 56, label: "손님" });
+          g.box("kitchen", { x: 10, y: 196, w: 340, h: 56, label: "주방" });
+          g.arrow("req", { from: "guest", to: "kitchen", offset: -60, role: "focus", label: "주문" });
+          g.arrow("res", { from: "kitchen", to: "guest", offset: -60, role: "compare", dashed: true, label: "음식" });
+          g.status("cook", { x: 180, y: 268, text: "조리 중" });
+        },
+      },
+      sequence: [
+        { id: "req", effect: "grow", from: 0, to: 0.35 },
+        { id: "req", effect: "travel", from: 0, to: 0.35, token: "주문서" },
+        { id: "cook", effect: "status", from: 0.3, to: 0.55 },
+        { id: "res", effect: "grow", from: 0.5, to: 0.95 },
+      ],
+    });
+
+    // loop: 조건을 만족할 때까지 반복
+    Dsviz.createDiagram("#retry-loop", {
+      caption: "맛이 기준에 닿을 때까지 간을 보고 다시 조리한다",
+      draw(g) {
+        g.loop("cycle", { cx: 200, cy: 120, r: 90, role: "focus", label: "간 보기 반복" });
+        g.chip("taste", { x: 200, y: 30, text: "맛보기", role: "focus" });
+        g.chip("adjust", { x: 200, y: 210, text: "양념 추가", role: "warn" });
+        g.arrow("exit", { from: [290, 120], to: "done", role: "compare", label: "기준 충족" });
+        g.box("done", { x: 450, y: 90, w: 150, h: 60, label: "완성", role: "compare" });
+      },
+      sequence: [
+        { id: "cycle", effect: "grow", from: 0, to: 0.3 },
+        { id: "cycle", effect: "cycle", from: 0.3, to: 0.8, laps: 2 },
+        { id: "exit", effect: "grow", from: 0.8, to: 0.95 },
+        { id: "done", effect: "fade", from: 0.85, to: 1 },
+        { id: "done", effect: "pulse", from: 0.9, to: 1 },
+      ],
+    });
+  </script>
+</body>
+</html>

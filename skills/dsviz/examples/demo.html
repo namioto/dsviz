@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>단계별 데모 예시</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Source+Code+Pro&display=swap" />
+  <link rel="stylesheet" href="../runtime/dsviz.css" />
+  <style>
+    body { margin: 0; padding: 16px; background: var(--ds-surface-2); }
+    main { max-width: 720px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="percentile"></div>
+  </main>
+  <script src="../runtime/dsviz.js"></script>
+  <script>
+    // summary-trap: 응답 시간 분포(구간 가운데값, 25ms 폭) 서버별 40건
+    const servers = {
+      a: [[75, 4], [100, 8], [125, 20], [150, 8]],
+      b: [[25, 24], [75, 9], [425, 4], [475, 2], [875, 1]],
+    };
+    const stats = (bins) => {
+      const all = bins.flatMap(([v, c]) => Array(c).fill(v)).sort((x, y) => x - y);
+      return { mean: all.reduce((s, v) => s + v, 0) / all.length, p99: all[Math.ceil(all.length * 0.99) - 1] };
+    };
+    const A = stats(servers.a);
+    const B = stats(servers.b);
+    const ratio = Math.round(B.p99 / A.p99);
+
+    Dsviz.createDemo("#percentile", {
+      steps: [
+        { at: 0, caption: "두 서버에 요청이 40건씩 들어온다 (예시 데이터)" },
+        { at: 0.38, caption: `평균 응답 시간은 둘 다 ${Math.round(A.mean)}ms다` },
+        { at: 0.68, caption: `가장 느린 1%(P99)는 ${A.p99}ms와 ${B.p99}ms, 약 ${ratio}배 차이다` },
+      ],
+      draw(g) {
+        const axis = { w: 500, h: 110, xDomain: [0, 900], yDomain: [0, 25], yTicks: 1, xFormat: (v) => `${v}` };
+        g.chart("ca", { ...axis, x: 40, y: 20 });
+        g.chart("cb", { ...axis, x: 40, y: 200, xLabel: "응답 시간(ms)" });
+        g.chip("la", { x: 600, y: 75, text: "서버 A", role: "focus" });
+        g.chip("lb", { x: 600, y: 255, text: "서버 B", role: "compare" });
+        g.bars("ha", { chart: "ca", role: "focus", binWidth: 25, data: servers.a });
+        g.bars("hb", { chart: "cb", role: "compare", binWidth: 25, data: servers.b, roles: ["compare", "compare", "alert", "alert", "alert"] });
+        g.refLine("ma", { chart: "ca", x: A.mean, label: "평균", labelSide: "left" });
+        g.refLine("mb", { chart: "cb", x: B.mean, label: "평균", labelSide: "left" });
+        g.refLine("pa", { chart: "ca", x: A.p99, label: `P99 ${A.p99}ms`, role: "focus" });
+        g.refLine("pb", { chart: "cb", x: B.p99, label: `P99 ${B.p99}ms`, role: "alert", labelSide: "left" });
+      },
+      sequence: [
+        { ids: ["ca", "cb", "la", "lb"], effect: "fade", from: 0, to: 0.08 },
+        { ids: ["ha-0", "ha-1", "ha-2", "ha-3"], effect: "grow", from: 0.05, to: 0.15, stagger: 0.04 },
+        { ids: ["hb-0", "hb-1", "hb-2", "hb-3", "hb-4"], effect: "grow", from: 0.12, to: 0.22, stagger: 0.04 },
+        { ids: ["ma", "mb"], effect: "grow", from: 0.4, to: 0.52 },
+        { ids: ["hb-2", "hb-3", "hb-4"], effect: "highlight", from: 0.7, to: 0.8 },
+        { ids: ["pa", "pb"], effect: "grow", from: 0.72, to: 0.86 },
+      ],
+    });
+  </script>
+</body>
+</html>

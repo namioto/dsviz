@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "dsviz",
+  "owner": {
+    "name": "namioto",
+    "url": "https://github.com/namioto"
+  },
+  "description": "dsviz 시각화 스킬 플러그인",
+  "plugins": [
+    {
+      "name": "dsviz",
+      "source": "./",
+      "description": "글/문서/데이터를 개념도, 표, 차트로 그리고 애니메이션 HTML과 WebP로 내보내는 시각화 스킬"
+    }
+  ]
+}
