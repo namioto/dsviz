@@ -13,14 +13,19 @@
 | `capacity-queue` | 용량과 대기열 | 처리량을 넘으면 쌓이는 줄 | box(처리기), dot 줄 / fade 시차, status. 처리기 수나 도착 속도를 바꿔 보게 하려면 createLab | |
 | `timeline-review` | 타임라인 회고 | 결과 전에 이미 있던 신호 | line(시간축), dot, chip / fade 순서대로, pulse | |
 | `before-after` | 전후 비교 | 사건 하나를 기준으로 달라진 점 | 같은 구성 두 벌 나란히, 차이만 `focus` / fade | |
+| `swimlane` | 역할별 흐름 | 누가 어느 단계를 맡고, 일이 어디서 다른 역할로 넘어가는지 | 레인마다 왼쪽 text(레인 이름) + 레인 사이 점선 line, 단계 box는 자기 레인 안에 시간 순서대로 왼쪽 → 오른쪽, 레인을 건너는 arrow는 `via`로 직각으로 꺾음. 레인을 box로 감싸지 않음 / grow 순서대로, travel | |
+| `branch` | 분기 흐름 | 조건에 따라 길이 갈리는 과정과 각 길의 끝 | 조건은 box(`label`에 질문), 갈림 arrow마다 답 `label`(예/아니오 등), 주 경로는 한 방향으로 곧게 두고 갈림 경로는 옆으로 뺌 / grow 순서대로, 결론 경로에 travel | |
+| `tree` | 트리 구조 | 상위와 하위로 나뉘는 분해 구조 | 맨 위에 뿌리 box 하나, 자식은 자기 부모 바로 아래에 모아 가로로 나열해 아래층일수록 넓어짐(같은 층 box는 같은 y), 연결은 화살표가 아니라 line(부모 아래 세로선 → 가로 가지선 → 자식마다 세로선, 머리 없음), 모든 가지를 펼치되 아래층이 640 폭을 넘으면 가지 수를 줄임, 결론에 해당하는 가지만 역할 색 / grow 위층부터 | |
 | `trend` | 추이 | 시간에 따른 변화, 여러 시리즈 비교 | chart + lineSeries/areaSeries, refLine, 데이터 좌표 chip / grow, highlight | |
 | `compare-bars` | 항목 비교 | 항목별 크기 차이, 가장 큰/작은 항목 | chart + bars(`labels`), 답 막대만 역할 색 / `ids`+`stagger` grow, highlight | |
+| `funnel` | 전환 감소 | 단계를 거칠수록 값이 줄어드는 과정과 가장 많이 빠지는 구간 | g.funnel 하나, 가장 많이 빠지는 구간(직전 단계 대비 비율 기준)을 `focusDrop`으로 강조, 캡션의 비율에는 분모를 적음 / 단계 묶음(`<id>-s<i>`) fade를 `stagger`로, 강조 구간(`<id>-dropband-i`, `<id>-drop-i`) highlight | |
 | `summary-trap` | 요약값의 함정 | 요약값은 같은데 분포가 다름 | 같은 x/y 범위의 차트 두 개를 위아래(분포 모양 비교) 또는 좌우: 숫자형 x bars(히스토그램) + refLine(평균/백분위) / refLine grow 먼저, 막대 stagger grow | ✓ |
 | `shape-grid` | 패턴 비교 그리드 | 여러 모양을 나란히 놓고 구분 | 작은 chart 여러 개 + lineSeries, chip 제목 / grow | |
 | `drift-vs-jump` | 서서히 변화와 급변 | 조금씩 쌓이는 변화와 한 번에 뛰는 변화 | 시리즈 두 개 + chip(실제 변화량) 또는 chart 두 개 / grow, highlight | |
 | `tipping-curve` | 임계점 곡선 | 어느 지점부터 급격히 꺾이는 관계 | chart + lineSeries, refLine(x 임계점) / grow, pulse | |
 | `hidden-data` | 보이지 않는 데이터 | 빠진 표본 때문에 왜곡된 결론 | dot 전체 → 일부 `muted` / fade | ✓ |
 | `unit-count` | 사람 수로 세기 | 비율이나 퍼센트를 실제 인원으로 보여 줘 크기를 체감하게 함 | people(`mark`로 해당 인원만 역할 색) + chip(퍼센트와 인원) / fade, highlight | |
+| `overlap` | 겹침 | 두세 집합이 얼마나 겹치는지 | 집합마다 circle(면적이 집합 크기에 비례), 겹친 영역 면적도 겹친 크기에 맞게 원 중심 거리를 정함, 겹친 영역은 overlap으로 역할 색, 영역마다 label에 크기, 집합 이름과 집합 전체 크기는 원 바깥 text, 겹침 비율은 기준(각 집합, 중복 뺀 전체)을 밝혀 적음 / fade 집합 순서대로, 겹친 영역 highlight | |
 | `mode-compare` | 방식 비교 실험 | 같은 작업을 A/B 방식으로 실행해 차이를 체감 | createLab: toggle(A/B) + run/reset + metrics, 그림은 매 프레임 상태로 | |
 
 ## 차트 배치 기준
