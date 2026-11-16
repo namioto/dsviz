@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "dsviz",
   "description": "글/문서/데이터를 개념도, 표, 차트로 그리고 애니메이션 HTML과 WebP로 내보내는 시각화 스킬",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "namioto",
     "url": "https://github.com/namioto"
