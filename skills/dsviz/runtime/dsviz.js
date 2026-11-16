@@ -1666,17 +1666,44 @@
         if (!within(a, c) && !within(c, a)) issues.push(`상자가 다른 상자 테두리에 걸침: ${boxes[i].id} / ${boxes[j].id}`);
       }
     }
-    // pulse 고리(요소 바깥으로 최대 10)가 그 요소를 담은 상자 밖으로 나가는지. 완성 프레임에는 없고 재생 중에만 보임
     const PULSE_REACH = 10;
-    for (const id of new Set(sequence.filter((s) => s.effect === "pulse").map((s) => s.id))) {
-      const n = b.byId.get(id);
-      const r = n && (n.rect || n.textBox);
-      if (!r) continue;
-      const ring = inset(r, -PULSE_REACH);
-      for (const q of boxes) {
-        if (q === n || !within(r, q.rect) || within(ring, q.rect)) continue;
-        issues.push(`pulse 고리가 상자 밖으로 나감: ${id} / ${q.id} (상자 테두리에서 ${PULSE_REACH} 이상 띄우거나 pulse 제거)`);
+    // 상자 안 요소가 재생 중 어느 순간에도 그 상자를 벗어나는지. 완성 프레임에는 없는 덧그림(pulse 고리, travel 점/글자 상자)과 선 두께/화살촉까지 포함한 최대 범위로 검사
+    // 부모: 요소의 배치 범위를 완전히 담는 가장 작은 상자
+    const reachOf = (n) => {
+      let d = 0;
+      if (n.pts) d += (n.width || 1.8) / 2 + (n.heads && n.heads !== "none" ? 7 : 0);
+      for (const s of sequence) {
+        if (s.id !== n.id) continue;
+        if (s.effect === "pulse") d = Math.max(d, PULSE_REACH);
+        if (s.effect === "travel" || s.effect === "cycle") {
+          let half = 7;
+          if (s.token) {
+            b.setFont(10, 600, true);
+            half = Math.max(measureCtx.measureText(s.token).width + 14, b.fontPx(10) + 8) / 2;
+          }
+          d = Math.max(d, half);
+        }
       }
+      return d;
+    };
+    const baseOf = (n) => {
+      if (n.rect) return n.rect;
+      if (n.textBox) return n.textBox;
+      if (n.pts && n.pts.length) {
+        const xs = n.pts.map((q) => q[0]), ys = n.pts.map((q) => q[1]);
+        return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+      }
+      return null;
+    };
+    for (const n of b.nodes) {
+      if (n.type === "axis" || n.data || n.segOf) continue;
+      const r = baseOf(n);
+      if (!r) continue;
+      const parents = boxes.filter((q) => q !== n && within(r, q.rect));
+      if (!parents.length) continue;
+      const parent = parents.reduce((m, q) => (q.rect.w * q.rect.h < m.rect.w * m.rect.h ? q : m));
+      const d = reachOf(n);
+      if (d > 0 && !within(inset(r, -d), parent.rect)) issues.push(`요소가 상자 밖으로 나감(재생 중 포함): ${n.id} / ${parent.id} (테두리에서 ${Math.ceil(d)} 이상 띄우기)`);
     }
     // 점(dot)이 글자(상자 라벨 포함)를 가리는지
     for (const d of b.nodes.filter((n) => n.type === "dot")) {
