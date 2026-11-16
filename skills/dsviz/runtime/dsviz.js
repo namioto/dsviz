@@ -265,6 +265,21 @@
       return { x: left, y: top, w, h, lh };
     }
 
+    // polygon/circle/overlap 공통: 역할, 테두리, 라벨 줄
+    function shapeLabel(o, labelW) {
+      const size = o.size || 13;
+      return {
+        role: o.role || "neutral",
+        dashed: !!o.dashed,
+        lines: o.label ? wrap(o.label, Math.max(24, labelW), size, 600) : [],
+        subLines: o.sub ? wrap(o.sub, Math.max(24, labelW), o.subSize || 11, 400) : [],
+        size,
+        subSize: o.subSize || 11,
+        labelDx: o.labelDx || 0,
+        labelDy: o.labelDy || 0,
+      };
+    }
+
     function add(type, id, props) {
       if (!id) errors.push(`${type}: id 누락`);
       if (byId.has(id)) errors.push(`중복 id: ${id}`);
@@ -281,6 +296,7 @@
         errors.push(`연결 대상 없음: ${ref}`);
         return { point: [0, 0] };
       }
+      if (n.shape === "circle") return { rect: n.rect, circleR: n.r };
       if (n.rect) return { rect: n.rect };
       return { point: [n.x, n.y] };
     }
@@ -303,6 +319,12 @@
       const lastSource = mids[mids.length - 1] || ca;
       const clip = (r, c, target) => {
         if (!r.rect) return r.point;
+        if (r.circleR) {
+          const dx = target[0] - c[0];
+          const dy = target[1] - c[1];
+          const d = Math.hypot(dx, dy) || 1;
+          return [c[0] + (dx / d) * (r.circleR + gap), c[1] + (dy / d) * (r.circleR + gap)];
+        }
         // offset으로 옮긴 중심 기준으로 테두리와 만나는 점
         const rr = { ...r.rect, x: c[0] - r.rect.w / 2, y: c[1] - r.rect.h / 2 };
         const p = clipToRect(rr, target[0], target[1], gap);
@@ -469,6 +491,107 @@
           pts.push([o.cx + r * Math.cos(a), o.cy + r * Math.sin(a)]);
         }
         return add("path", id, { pts, role: o.role || "focus", dashed: !!o.dashed, width: o.width || 1.8, heads: "end", label: o.label, labelSide: "center", labelSize: o.labelSize || 12, loopCenter: [o.cx, o.cy] });
+      },
+      // 다각형: points = 꼭짓점 목록. 라벨은 꼭짓점 범위 가운데(labelDx/labelDy로 이동)
+      polygon(id, o) {
+        const pts = o.points || [];
+        const xs = pts.map((q) => q[0]);
+        const ys = pts.map((q) => q[1]);
+        const rect = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+        return add("shape", id, { shape: "polygon", poly: pts, rect, radius: o.radius || 0, opacity: o.opacity ?? 1, ...shapeLabel(o, o.labelW || Math.max(rect.w - 16, 96)), fill: o.fill || "soft" });
+      },
+      // 원: x y = 중심. 기본 채움은 반투명이라 원끼리 겹친 곳이 진해짐
+      circle(id, o) {
+        const r = o.r || 40;
+        const rect = { x: o.x - r, y: o.y - r, w: r * 2, h: r * 2 };
+        return add("shape", id, { shape: "circle", cx: o.x, cy: o.y, r, rect, ...shapeLabel(o, o.labelW || r * 1.4), fill: o.fill || "tint" });
+      },
+      // 원 여러 개가 모두 겹치는 영역만 칠함: of = 원 id 목록(먼저 정의)
+      overlap(id, o) {
+        const circles = (o.of || []).map((cid) => byId.get(cid)).filter((n) => n && n.shape === "circle");
+        if (circles.length < 2) errors.push(`overlap은 앞에서 정의한 circle 2개 이상: ${id}`);
+        const x0 = Math.max(...circles.map((c) => c.rect.x));
+        const y0 = Math.max(...circles.map((c) => c.rect.y));
+        const x1 = Math.min(...circles.map((c) => c.rect.x + c.rect.w));
+        const y1 = Math.min(...circles.map((c) => c.rect.y + c.rect.h));
+        const rect = { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) };
+        return add("shape", id, { shape: "overlap", circles, rect, ...shapeLabel(o, o.labelW || rect.w - 8), fill: "soft" });
+      },
+      // 깔때기(흐르는 띠): stages = [[이름, 값], ...]. 단계마다 두께를 유지하다 다음 단계로 S자로 넘어감
+      // 가로(왼쪽 → 오른쪽), w < 420이면 세로(위 → 아래)
+      // id: 단계 <id>-0.., 이름 <id>-name-i, 값 <id>-value-i, 감소 <id>-drop-i, 감소 강조 <id>-dropband-i, 묶음 <id>, 단계 묶음 <id>-s<i>
+      funnel(id, o) {
+        const st = o.stages || [];
+        const n = st.length;
+        const fmtV = o.format || ((v) => v.toLocaleString("ko-KR"));
+        const size = o.size || 13;
+        const vertical = o.vertical ?? o.w < 420;
+        const v0 = st[0]?.[1] || 1;
+        let prof, labelSpan;
+        if (!vertical) {
+          // 가로: u = x, 두께 방향 v = y
+          const top = o.y + 46;
+          const maxT = o.maxT || 140;
+          prof = { horiz: true, u0: o.x, u1: o.x + o.w, mid: top + maxT / 2, maxT };
+        } else {
+          // 세로: u = y, 두께 방향 v = x. 띠는 왼쪽, 라벨은 오른쪽
+          const maxT = o.maxT || Math.min(160, o.w * 0.5);
+          const rowH = o.rowH || 76;
+          prof = { horiz: false, u0: o.y, u1: o.y + rowH * n, mid: o.x + maxT / 2, maxT };
+          labelSpan = o.x + maxT + 18;
+        }
+        const colW = (prof.u1 - prof.u0) / n;
+        prof.c = st.map((_, i) => prof.u0 + (i + 0.5) * colW);
+        prof.p = colW * 0.2;
+        // 두께는 값의 제곱근에 비례(작은 단계도 띠로 보이게, 정확한 값은 숫자로 표시). scale: 1이면 정비례
+        const minT = prof.maxT * 0.06;
+        const scale = o.scale ?? 0.5;
+        prof.T = st.map(([, v]) => Math.max(minT, Math.pow(v / v0, scale) * prof.maxT));
+        const P = (u, v) => (prof.horiz ? [u, v] : [v, u]);
+        const roles = o.roles || [];
+        const members = [];
+        let glowAt = null;
+        const rectOf = (ua, ub) => {
+          const [x0, y0] = P(ua, prof.mid - prof.maxT / 2);
+          const [x1, y1] = P(ub, prof.mid + prof.maxT / 2);
+          return { x: Math.min(x0, x1), y: Math.min(y0, y1), w: Math.abs(x1 - x0), h: Math.abs(y1 - y0) };
+        };
+        st.forEach(([name, v], i) => {
+          const ua = i === 0 ? prof.u0 : prof.c[i] - colW / 2;
+          const ub = i === n - 1 ? prof.u1 : prof.c[i] + colW / 2;
+          add("flowStage", `${id}-${i}`, { prof, clip: [ua, ub], center: prof.c[i], role: roles[i] || o.role || "focus", rect: rectOf(ua, ub) });
+          const c = prof.c[i];
+          if (!vertical) {
+            g.text(`${id}-name-${i}`, { x: c, y: o.y + 8, text: name, size: size - 1, tone: "ink2", weight: 600 });
+            g.text(`${id}-value-${i}`, { x: c, y: o.y + 28, text: fmtV(v), size: size + 3, tone: "ink", weight: 700 });
+          } else {
+            g.text(`${id}-name-${i}`, { x: labelSpan, y: c - 10, text: name, align: "left", size: size - 1, tone: "ink2", weight: 600 });
+            g.text(`${id}-value-${i}`, { x: labelSpan, y: c + 10, text: fmtV(v), align: "left", size: size + 1, tone: "ink", weight: 700 });
+          }
+          members.push(`${id}-${i}`, `${id}-name-${i}`, `${id}-value-${i}`);
+          if (o.drop !== false && i < n - 1) {
+            const d = v - st[i + 1][1];
+            const pct = Math.round((d / v) * 100);
+            const focus = o.focusDrop === i;
+            const role = focus ? o.focusRole || "alert" : undefined;
+            const b = prof.u0 + (i + 1) * colW;
+            if (!vertical) g.text(`${id}-drop-${i}`, { x: b, y: prof.mid + prof.maxT / 2 + 18, text: `−${fmtV(d)} (${pct}%)`, size: size - 2, role, tone: role ? undefined : "ink3", weight: focus ? 700 : 400 });
+            else g.text(`${id}-drop-${i}`, { x: labelSpan, y: b, text: `−${fmtV(d)} (${pct}%)`, align: "left", size: size - 3, role, tone: role ? undefined : "ink3", weight: focus ? 700 : 400 });
+            members.push(`${id}-drop-${i}`);
+            if (focus) glowAt = { i, role };
+          }
+        });
+        // 감소 강조: 두 단계 사이 전환 구간만 역할 색. 이웃 단계가 덮지 않도록 모든 단계 다음에 그림
+        if (glowAt) {
+          const { i, role } = glowAt;
+          const ua2 = prof.c[i] + prof.p * 0.4, ub2 = prof.c[i + 1] - prof.p * 0.4;
+          add("flowStage", `${id}-dropband-${i}`, { prof, clip: [ua2, ub2], glow: true, role, rect: rectOf(ua2, ub2) });
+          members.push(`${id}-dropband-${i}`);
+        }
+        groups.set(id, members);
+        st.forEach((_, i) => groups.set(`${id}-s${i}`, members.filter((m) => m.endsWith(`-${i}`) && !m.includes("dropband"))));
+        const end = P(prof.u1, prof.mid + prof.maxT / 2 + 30);
+        return { x: o.x, y: o.y, w: o.w, h: (vertical ? prof.u1 : end[1]) - o.y };
       },
       dot(id, o) {
         const r = o.r || 5;
@@ -932,6 +1055,70 @@
     return [x + nx * d * side, y + ny * d * side];
   }
 
+  // 다각형 경로(r > 0이면 둥근 꼭짓점)
+  function polyPath(ctx, pts, r) {
+    const n = pts.length;
+    if (!r) {
+      pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+      ctx.closePath();
+      return;
+    }
+    const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const start = mid(pts[n - 1], pts[0]);
+    ctx.moveTo(start[0], start[1]);
+    for (let i = 0; i < n; i++) {
+      const cur = pts[i];
+      const next = pts[(i + 1) % n];
+      ctx.arcTo(cur[0], cur[1], next[0], next[1], r);
+    }
+    ctx.closePath();
+  }
+
+  // 두 색을 a : 1-a로 섞은 rgb 문자열(색 토큰 형식과 무관하게 캔버스가 정규화한 값을 씀)
+  function mixColor(ctx, c1, c2, a) {
+    const rgb = (c) => {
+      ctx.fillStyle = c;
+      const v = ctx.fillStyle;
+      return v.startsWith("#") ? [1, 3, 5].map((k) => parseInt(v.slice(k, k + 2), 16)) : v.replace(/rgba?\(|\)/g, "").split(",").slice(0, 3).map(Number);
+    };
+    const x = rgb(c1), y = rgb(c2);
+    return `rgb(${x.map((v, k) => Math.round(v * a + y[k] * (1 - a))).join(",")})`;
+  }
+
+  // 흐르는 띠의 두께: 단계 가운데 ±p는 그 단계 두께, 사이는 부드러운 S자(smoothstep)로 넘어감
+  function flowThick(prof, u) {
+    const { c, p, T } = prof;
+    const n = c.length;
+    if (u <= c[0] + p) return T[0];
+    if (u >= c[n - 1] - p) return T[n - 1];
+    for (let i = 0; i < n - 1; i++) {
+      if (u <= c[i] + p) return T[i];
+      if (u < c[i + 1] - p) {
+        const t = (u - (c[i] + p)) / (c[i + 1] - p - (c[i] + p));
+        const e = t * t * (3 - 2 * t);
+        return T[i] + (T[i + 1] - T[i]) * e;
+      }
+    }
+    return T[n - 1];
+  }
+  // 띠 경로(두께에 scale을 곱한 한 겹)
+  function flowPath(ctx, prof, scale) {
+    const P = (u, v) => (prof.horiz ? [u, v] : [v, u]);
+    const step = 2;
+    const pts = [];
+    for (let u = prof.u0; u <= prof.u1 + 0.01; u += step) pts.push([u, (flowThick(prof, Math.min(u, prof.u1)) * scale) / 2]);
+    pts.forEach(([u, h], k) => {
+      const [x, y] = P(Math.min(u, prof.u1), prof.mid - h);
+      k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    for (let k = pts.length - 1; k >= 0; k--) {
+      const [u, h] = pts[k];
+      const [x, y] = P(Math.min(u, prof.u1), prof.mid + h);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
   // 사람 모양 하나: cx = 가로 중심, top = 머리 위 끝, s = 높이
   function personPath(ctx, cx, top, s) {
     ctx.beginPath();
@@ -1182,6 +1369,140 @@
         ctx.textBaseline = "middle";
         ctx.fillText(node.text, r.x + r.w / 2, r.y + r.h / 2);
       }
+    } else if (node.type === "shape") {
+      const { x, y, w, h } = node.rect;
+      if (st.scale !== 1) {
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.scale(st.scale, st.scale);
+        ctx.translate(-(x + w / 2), -(y + h / 2));
+      }
+      const neutral = node.role === "neutral";
+      if (node.shape === "overlap") {
+        // 모든 원으로 잘라낸 영역(교집합)만 칠하고, 그 안에 걸친 원 테두리로 경계를 그림
+        const cs = node.circles;
+        ctx.save();
+        for (const c of cs) {
+          ctx.beginPath();
+          ctx.arc(c.cx, c.cy, c.r, 0, Math.PI * 2);
+          ctx.clip();
+        }
+        ctx.fillStyle = role.soft;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = role.stroke;
+        // 잘라낸 경계에서 절반만 남는 선 두께의 보정(두 배)
+        ctx.lineWidth = neutral ? 2.4 : 4.8;
+        for (const c of cs) {
+          ctx.beginPath();
+          ctx.arc(c.cx, c.cy, c.r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else {
+        ctx.beginPath();
+        if (node.shape === "circle") ctx.arc(node.cx, node.cy, node.r, 0, Math.PI * 2);
+        else polyPath(ctx, node.poly, node.radius);
+        if (node.opacity < 1) ctx.globalAlpha *= node.opacity;
+        if (node.fill === "tint") {
+          ctx.save();
+          ctx.globalAlpha *= neutral ? 0.1 : 0.16;
+          ctx.fillStyle = role.stroke;
+          ctx.fill();
+          ctx.restore();
+        } else if (node.fill !== "none") {
+          ctx.fillStyle = node.fill === "solid" ? role.stroke : role.soft;
+          ctx.fill();
+        }
+        ctx.strokeStyle = role.stroke;
+        ctx.lineWidth = neutral ? 1 : 1.4;
+        ctx.setLineDash(node.dashed ? [5, 4] : []);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      // 채움 투명도는 면에만 적용, 라벨은 원래 불투명도
+      ctx.globalAlpha = st.alpha;
+      const lr = shapeLabelRect(b, node);
+      if (lr) {
+        const solid = node.fill === "solid";
+        b.setFont(node.size, 600);
+        const lh = b.fontPx(node.size) * 1.3;
+        const slh = b.fontPx(node.subSize) * 1.3;
+        let ty = lr.y + lh / 2;
+        const cx = lr.x + lr.w / 2;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = solid ? tk.surface : neutral ? tk.ink2 : role.ink;
+        for (const l of node.lines) {
+          ctx.fillText(l, cx, ty);
+          ty += lh;
+        }
+        b.setFont(node.subSize, 400);
+        ctx.fillStyle = solid ? tk.surface : tk.ink3;
+        ty += (slh - lh) / 2;
+        for (const l of node.subLines) {
+          ctx.fillText(l, cx, ty);
+          ty += slh;
+        }
+      }
+    } else if (node.type === "flowStage") {
+      // 이 단계 구간만 잘라 같은 색 세 겹(바깥 옅게, 안쪽 진하게)을 칠함
+      const pr = node.prof;
+      const [ua, ub] = node.clip;
+      ctx.save();
+      ctx.beginPath();
+      // 이웃 단계와 0.75 겹침(이음선 방지, 불투명 색이라 겹쳐도 같은 색)
+      // 자르는 경계를 화면 픽셀에 맞춤: 픽셀 중간에서 자르면 세 겹이 부분적으로 겹쳐 이음선이 생김
+      const ov = node.glow ? 0 : 0.75;
+      const m = ctx.getTransform();
+      const [sc, off] = pr.horiz ? [m.a, m.e] : [m.d, m.f];
+      const snap = (u) => (Math.round(sc * u + off) - off) / sc;
+      const sa = snap(ua - ov), sb = snap(ub + ov);
+      if (pr.horiz) ctx.rect(sa, pr.mid - pr.maxT, sb - sa, pr.maxT * 2);
+      else ctx.rect(pr.mid - pr.maxT, sa, pr.maxT * 2, sb - sa);
+      ctx.clip();
+      ctx.fillStyle = role.stroke;
+      let fill = role.stroke;
+      if (node.glow) {
+        // 감소 강조: 전환 구간 가운데가 가장 진하고 양 끝은 투명
+        const c = ctx.fillStyle;
+        const rgb = c.startsWith("#") ? [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16)).join(",") : c.replace(/rgba?\(|\)/g, "").split(",").slice(0, 3).join(",");
+        const gr = pr.horiz ? ctx.createLinearGradient(ua, 0, ub, 0) : ctx.createLinearGradient(0, ua, 0, ub);
+        gr.addColorStop(0, `rgba(${rgb},0)`);
+        gr.addColorStop(0.5, `rgba(${rgb},1)`);
+        gr.addColorStop(1, `rgba(${rgb},0)`);
+        fill = gr;
+      }
+      for (const [scale, a] of [[1, 0.22], [0.7, 0.42], [0.42, 1]]) {
+        ctx.beginPath();
+        flowPath(ctx, pr, scale);
+        if (node.glow) {
+          ctx.globalAlpha = st.alpha * a;
+          ctx.fillStyle = fill;
+          ctx.fill();
+          continue;
+        }
+        // 역할 색을 배경색과 a 비율로 섞은 불투명 색 한 번(반투명을 겹치면 이음선과 탁한 색이 생김)
+        ctx.globalAlpha = st.alpha;
+        ctx.fillStyle = mixColor(ctx, role.stroke, tk.surface, a);
+        ctx.fill();
+      }
+      ctx.globalAlpha = st.alpha;
+      // 단계 가운데 가는 세로선
+      if (node.center != null) {
+        const h = flowThick(pr, node.center) / 2 + 6;
+        ctx.strokeStyle = tk.surface;
+        ctx.globalAlpha = st.alpha * 0.85;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (pr.horiz) {
+          ctx.moveTo(node.center, pr.mid - h);
+          ctx.lineTo(node.center, pr.mid + h);
+        } else {
+          ctx.moveTo(pr.mid - h, node.center);
+          ctx.lineTo(pr.mid + h, node.center);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
     } else if (node.type === "dot") {
       ctx.beginPath();
       ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
@@ -1238,7 +1559,8 @@
       ctx.strokeStyle = role.stroke;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(r.x - grow, r.y - grow, r.w + grow * 2, r.h + grow * 2, (node.radius ?? 8) + grow);
+      if (node.shape === "circle") ctx.arc(node.cx, node.cy, node.r + grow, 0, Math.PI * 2);
+      else ctx.roundRect(r.x - grow, r.y - grow, r.w + grow * 2, r.h + grow * 2, (node.radius ?? 8) + grow);
       ctx.stroke();
     }
     ctx.restore();
@@ -1314,6 +1636,10 @@
       if (series.length >= 2) for (const sr of series) if (!sr.label) issues.push(`시리즈 라벨 없음(시리즈 ${series.length}개): ${sr.id}`);
     }
     // 상자 라벨도 다른 글자와 겹치면 안 되므로 목록에 추가
+    for (const n of b.nodes.filter((n) => n.type === "shape")) {
+      const lr = shapeLabelRect(b, n);
+      if (lr) texts.push({ id: n.id + ":label", r: lr });
+    }
     const boxes = b.nodes.filter((n) => n.type === "box");
     for (const n of boxes) {
       const lr = boxLabelRect(b, n);
@@ -1409,6 +1735,21 @@
     const h = n.lines.length * lh + n.subLines.length * slh;
     const top = n.labelAt === "top" ? n.rect.y + 12 : n.rect.y + n.rect.h / 2 - h / 2;
     return { x: n.rect.x + n.rect.w / 2 - w / 2, y: top, w, h };
+  }
+
+  // polygon/circle/overlap 라벨 영역: 도형 범위 가운데 + labelDx/labelDy
+  function shapeLabelRect(b, n) {
+    if (!n.lines.length && !n.subLines.length) return null;
+    b.setFont(n.size, 600);
+    const lh = b.fontPx(n.size) * 1.3;
+    let w = Math.max(0, ...n.lines.map((l) => measureCtx.measureText(l).width));
+    b.setFont(n.subSize, 400);
+    const slh = b.fontPx(n.subSize) * 1.3;
+    w = Math.max(w, ...n.subLines.map((l) => measureCtx.measureText(l).width));
+    const h = n.lines.length * lh + n.subLines.length * slh;
+    const cx = n.rect.x + n.rect.w / 2 + n.labelDx;
+    const cy = n.rect.y + n.rect.h / 2 + n.labelDy;
+    return { x: cx - w / 2, y: cy - h / 2, w, h };
   }
 
   function sceneBounds(nodes) {
@@ -1882,8 +2223,9 @@
       for (const n of scene.nodes) {
         const st = states.get(n.id);
         if (st.alpha <= 0) continue;
-        if (st.tint < 1) {
-          const grey = { ...n, role: n.type === "box" ? "neutral" : "muted" };
+        // 덧칠하는 강조(깔때기 감소 구간)는 강조 전 회색으로 그리지 않음: 띠 가운데 구멍처럼 보임
+        if (st.tint < 1 && !n.glow) {
+          const grey = { ...n, role: n.type === "box" || n.type === "shape" ? "neutral" : "muted" };
           paintNode(ctx, scene.b, tk, grey, { ...st, alpha: st.alpha * (1 - st.tint) }, elapsed);
         }
         if (st.tint > 0) paintNode(ctx, scene.b, tk, n, { ...st, alpha: st.alpha * st.tint }, elapsed);

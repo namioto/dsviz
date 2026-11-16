@@ -93,6 +93,10 @@ Dsviz.createLab("#id", {
 | `g.line(id, o)` | `points` = 점 목록 | `role dashed label labelSide width heads` | 기준선, 구분선, 경로. `heads` 기본 `none` |
 | `g.loop(id, o)` | `cx cy` = 원 중심 | `r role label startDeg gapDeg` | 순환 경로(시계 방향). `label`은 원 중심 |
 | `g.dot(id, o)` | `x y` = 중심 | `r role` | 점, 위치 표시 |
+| `g.polygon(id, o)` | `points` = 꼭짓점 목록 | `role fill dashed label sub labelDx labelDy labelW size` | 다각형(사다리꼴, 삼각형 등). 깔때기 단계처럼 위아래 폭이 다른 면. `fill`: `soft`(기본) `solid` `none`. 라벨은 꼭짓점 범위 가운데, `labelDx`/`labelDy`로 이동. 화살표는 꼭짓점 범위 테두리에 붙음 |
+| `g.circle(id, o)` | `x y` = 중심 | `r role fill dashed label sub labelDx labelDy` | 원. 기본 채움(`tint`)은 반투명이라 원끼리 겹친 곳이 진해짐. 집합 크기를 나타내면 면적이 크기에 비례하게 `r`을 정함(반지름 비례 금지). 화살표는 원 테두리에 붙음 |
+| `g.overlap(id, o)` | `of` = 앞에서 정의한 circle id 목록 | `role label sub labelDx labelDy` | 원들이 모두 겹치는 영역만 칠하고 그 경계를 굵게 그림(벤 다이어그램의 교집합). 라벨은 겹친 영역 가운데 |
+| `g.funnel(id, o)` | `x y` = 왼쪽 위, `w` = 차지할 전체 폭 | `stages focusDrop focusRole role format drop scale maxT` | 깔때기(단계를 거칠수록 줄어드는 값: 방문/가입/주문처럼 앞 단계의 일부만 다음 단계로 넘어가는 과정). `stages`: `[[이름, 값], ...]`. 띠와 라벨을 모두 그림: 단계마다 두께를 유지하다 다음 단계로 S자로 넘어가는 띠(같은 색 세 겹), 단계 위에 이름과 값, 단계 사이 아래에 직전 단계 대비 감소(값과 %). 두께는 값의 제곱근에 비례(`scale: 1`이면 정비례)하고, 정확한 값은 숫자로 적음. 단위는 `format`으로 붙임(예: `v => v + "건"`). `focusDrop: i`: 단계 i에서 i+1로 넘어가는 전환 구간만 `focusRole`(기본 `alert`) 색으로 진해지고 감소 글자도 같은 색. `w`가 420 미만이면 세로로 흐르고 라벨은 오른쪽 한 열. id: 단계 `<id>-0`.., 이름 `<id>-name-i`, 값 `<id>-value-i`, 감소 `<id>-drop-i`, 강조 구간 `<id>-dropband-i`, 묶음 `<id>`, 단계 묶음 `<id>-s<i>`(그 단계의 띠/이름/값/감소, `ids` + `stagger`로 차례로 나타낼 때) |
 | `g.status(id, o)` | `at`(박스 아래 가운데) 또는 `x y` = 중심 | `text role` | 진행 중 표시. `role` 기본 `warn` |
 | `g.person(id, o)` | `x y` = 그림 중심 | `size count role label labelSize` | 사람(사용자, 고객, 담당자). `size`: 그림 높이(기본 40). `count`: 여러 명을 겹쳐 그림(사용자들, 고객 무리), 5 이하. 실제 인원수는 `label`에 적음. `label`은 그림 아래. 화살표는 그림 테두리에 붙음 |
 | `g.people(id, o)` | `x y` = 왼쪽 위 | `total cols size gap mark role label labelSize` | 사람 아이콘 격자(단위 차트). 인원 중 일부가 결론일 때(N명 중 M명). 앞에서부터 `mark`개를 `role` 색, 나머지는 회색. `highlight`를 주면 표시한 사람만 회색에서 역할 색으로 바뀜. 100개를 넘기면 아이콘 하나의 단위를 바꾸고 `label`에 적음(`아이콘 1개 = 10명`) |
@@ -151,7 +155,7 @@ g.chip("peak", { chart: "c", x: "15시", y: 82, dy: -20, text: "정점 82명" })
 | `status` | 등장 | status | 나타난 뒤 구간 안에서 점(.) 개수가 바뀜 |
 | `travel` | 덧그림 | arrow/line/loop | 점이 경로를 한 번 따라감. `token: "글자"`면 글자 상자가 이동 |
 | `cycle` | 덧그림 | arrow/line/loop | 점이 경로를 반복해서 돎. `laps`(기본 2) |
-| `pulse` | 덧그림 | box/chip/dot/text/person | 테두리 고리가 퍼지며 사라짐 (선택/충족 강조) |
+| `pulse` | 덧그림 | box/chip/dot/text/person/polygon/circle/overlap/funnel 단계 | 테두리 고리가 퍼지며 사라짐 (선택/충족 강조) |
 | `highlight` | 색 전환 | `role`이 있는 모든 요소 | 구간 전에는 회색(box는 회색 틀, 그 외 `muted`), 구간 동안 역할 색으로 바뀜. 선택된 후보나 원인처럼 "나중에 드러나야 하는" 강조에 사용 |
 
 `travel` `cycle` `pulse`는 구간 안에서만 그리고 마지막 프레임에는 그리지 않는다. `highlight`는 등장 효과와 함께 쓸 수 있고, 마지막 프레임에서는 역할 색으로 보인다.
