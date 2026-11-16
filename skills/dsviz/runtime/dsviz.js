@@ -1656,6 +1656,28 @@
         if (!inside) issues.push(`글자가 상자 테두리에 걸침: ${t.id} / ${n.id}`);
       }
     }
+    // 상자가 다른 상자 테두리에 걸치는지(한쪽이 다른 쪽을 완전히 담거나 떨어져야 정상). 표 칸처럼 테두리만 맞닿은 것은 제외
+    const within = (r, q, tol = 0.5) => r.x >= q.x - tol && r.y >= q.y - tol && r.x + r.w <= q.x + q.w + tol && r.y + r.h <= q.y + q.h + tol;
+    const inset = (r, d) => ({ x: r.x + d, y: r.y + d, w: r.w - d * 2, h: r.h - d * 2 });
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i].rect, c = boxes[j].rect;
+        if (!rectsOverlap(inset(a, 0.5), inset(c, 0.5))) continue;
+        if (!within(a, c) && !within(c, a)) issues.push(`상자가 다른 상자 테두리에 걸침: ${boxes[i].id} / ${boxes[j].id}`);
+      }
+    }
+    // pulse 고리(요소 바깥으로 최대 10)가 그 요소를 담은 상자 밖으로 나가는지. 완성 프레임에는 없고 재생 중에만 보임
+    const PULSE_REACH = 10;
+    for (const id of new Set(sequence.filter((s) => s.effect === "pulse").map((s) => s.id))) {
+      const n = b.byId.get(id);
+      const r = n && (n.rect || n.textBox);
+      if (!r) continue;
+      const ring = inset(r, -PULSE_REACH);
+      for (const q of boxes) {
+        if (q === n || !within(r, q.rect) || within(ring, q.rect)) continue;
+        issues.push(`pulse 고리가 상자 밖으로 나감: ${id} / ${q.id} (상자 테두리에서 ${PULSE_REACH} 이상 띄우거나 pulse 제거)`);
+      }
+    }
     // 점(dot)이 글자(상자 라벨 포함)를 가리는지
     for (const d of b.nodes.filter((n) => n.type === "dot")) {
       for (const t of texts) if (rectsOverlap(d.rect, t.r)) issues.push(`점이 글자를 가림: ${d.id} / ${t.id}`);
